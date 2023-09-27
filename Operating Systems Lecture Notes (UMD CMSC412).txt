@@ -1,0 +1,5142 @@
+CMSC 412: operating systems
+
+Instructor: Neil Spring
+
+ Section tomorrow afternoon.
+
+* Introductory Material 
+
+** My lecture style - 
+ - whiteboard using emacs terminal
+  - loosely set schedule; prefer interaction
+  - notes are intended to supplement.
+ - programming assignments are mandatory
+  - falling behind creates suffering
+ - late policy: one weekend, once.
+
+** Your responsibilities:
+ - slow me down.  it is not your fault if I lose you; but it is your fault if you stay lost.
+ - read the textbook.   
+ - start assignments early.
+ - ask the TA or me for help.
+   - there exists piazza.
+
+** Vocabulary - 
+ - I believe that vocabulary is central to demonstrating an understanding of concepts.
+ - review material will be in 
+   - defining terms, 
+   - stating the utility of different concepts
+ - e.g., "virtual memory" is good because...
+
+** Significant programming assignments in this class.
+ - in C.
+ - debugging can be difficult (must attach the debugger).
+ - You will pass this class iff you complete these
+   assignments.  (Note: this is not policy, this is
+   experience.  In exceptional cases, students can
+   bomb exams despite decent assignment performance.
+   You are not required to complete each programming
+   assignment to pass.) 
+ 
+** Project startup.
+ - git clone instructions in project0 handout.
+ - there is a simple virtual image for you to use.
+  - it may need updated software; allow it to update itself; 
+  - it may need git installed: apt-get install git.
+ - submit.cs.umd.edu/fall2015 
+     - submit.jar ; .submit (per-programming assignment file) ; .submitUser (keeps authentication info)
+  - vi .submit  (for a particular project)
+  - cd build && make submit
+  - upload our finished code.
+  - further instructions in project0 handout.  (hey, that's online too).
+
+** TAs policy highlights
+ - 10 minute limit while others are waiting.
+ - TAs will move on after the project deadline.
+ - TAs expect you to have tried first.
+ - Use Piazza, not email. 
+
+** Unauthorized collaboration (syllabus review)
+ - don't share code
+   - don't print it.
+   - don't mail it.
+   - don't show it.
+   - don't search for it.
+   - don't pastebin it.
+   - don't facebook message it.
+   - don't commit to a public github.
+   - don't (whatever the kids are doing these days)
+   - don't share it as if it's your great project for employers to see
+ - use xlock. (locking screensaver)
+ - assignments: wikipedia is legal, sometimes flat wrong. 
+    sometimes wrong in the context of the class, often 
+    doesn't answer the question I asked.
+
+** Answering questions
+ 1) don't make incorrect generalizations.  we don't like
+ giving credit to answers that have falsehoods.
+
+ 2) just answer the question.  if you want to show off that you
+ have clue, being confident that you can answer the question 
+ concisely goes a long way.
+
+ 3) If there's a yes or no question in the homework, write
+ yes or no, in the first sentence, or "it does".  Or if you
+ feel as if complete sentences are required, answer the
+ question in the first sentence.  Structure.  Topic
+ sentences.  If you find yourself writing "the point is" in
+ a sentence, it means that you didn't organize your thoughts
+ enough to put "the point" in its rightful place in a
+ paragraph.
+
+ 4) If a question asks "explain the difference between",
+ your task is to state "they differ in how they perform X: A
+ uses Y and B uses Z."  (Not to define A and define B.)
+
+ I tell you these things now because I think they go without
+ saying, but once felt guilty about enforcing these
+ expectations without explicit warning.
+
+** Exams 
+ Format: ~24 multiple choice, ~6 short answer, ~2 longer answer (groups of questions)
+  mc: 
+   "which of the following is not a process state" -- only harder than that, usually.
+   some incorrect answers may be a little bit correct, e.g.,
+
+   Who is Darth Vader?
+    a) Anakin Skywalker
+    b) The guy who betrayed and murdered Anakin Skywalker
+    c) The guy with the horns and double-edged lightsaber
+    
+  short:
+   define something; what are the characteristics.    
+    "what's the motivation behind monitors?"
+  long: 
+   more likely fix this code, what's going on here.
+
+ Questions based on the programming assignments are likely.
+
+
+
+** Textbook
+ Anderson and Dahlin 
+  2nd ed
+ Silbershatz
+  8th edition.
+  ignore value judgements.  "rich features"
+  ignore windows sections.  you're welcome to read them.
+  summary sections at the end of each chapter.
+   - reread these rather than highlight in the text.
+  skim the first chapters.
+
+* What is an Operating System? 
+ - program that's "always" running.
+ - we'll treat the "kernel" and os as pretty much the same
+   thing.  (no GUIs, no X, etc.)   (no shells.)
+
+  what does it do?
+    piece of software between your code, application and the hardware.
+    "arbitrary" hardware -- lots of devices, lots of 
+         implementations of those devices
+      -- often just one or two processor architectures.
+    devices:
+      their own interfaces:
+       - serial port likely to give, take one character at a time, 
+       - keyboard likely to give one character at a time.
+       - printer's parallel port  (/neil wonders about the difference)
+       - video card (os treats this as a resource)
+       - network adapter: probably gives us one packet at a time.
+       - SATA... likely to provide a block from disk at a time.
+          "serial ata" is the common hard disk interface as of 2005-ish.
+          SCSI, IDE, other disk devices fit in here.
+       - tape drive.
+       - sound card
+      three ways of getting at the info from these devices.
+       - programmed i/o :   write or read from an I/O port
+            special CPU instructions for talking to these ports.
+       - interrupt-driven i/o :  devices can send a little signal
+            to trigger the cpu (operating system) to run a routine
+            that will read the data (or know to write more data)
+       - direct memory access (DMA): attempt to avoid bugging the CPU
+            with all the movement of data.
+   resource allocation and sharing:
+      resources include memory, cpu time, 
+         can enforce quotas on disk space.
+   provides an illusion of an abstract machine to applications
+     files, folders from file systems it manages.
+     dedicated cpu by isolating processes from each other
+     illusion that memory is infinite and linear through virtual memory
+     that some devices that take characters at a time can take 
+      buffers or lines (write(serial_device_file_descriptor, "foo", 3);)
+  provides isolation, but also mechanisms for processes to talk to each other.
+     shared memory, pipes, locks (semaphores)
+     priorities (some processes are more important than others)
+
+* Why Study OS? 
+
+why is studying operating systems interesting.
+ - for every application you write, you're going to rely on some 
+   operating system.   and if you understand what it's doing, and how
+   to instrument it, you can likely fix your application or make it
+   much faster
+   
+ - if you mess with hardware, you might have to extend or rewrite an OS.
+ -             with network protocols, (what I worked on long ago)
+ - if you mess with hardware, you might have to do without an OS.
+    - I hope you will appreciate the OS, despite the BSOD.
+ - OS is the most important piece of software.
+    - if it's buggy, you notice.
+    - if it's not running, you notice.
+ - It has power to do anything.
+    - 
+ - Lots of choices:
+    - "separation of policy and mechanism" 
+      - decisions to be made, 
+    - which disk blocks to read first?
+      - which processes to schedule first?
+ - Lots of tricky problems:
+     - deadlock (processes waiting on each other)    
+     - how to use more than one processor.  
+
+So, if you're CS: studying OS lets you write fast, secure application code that uses the OS well.
+    if you're CE: studying OS lets you write fast device firmware that reproduces the OS to run the device.
+  (It's not about working for Microsoft, Apple, etc.)
+
+
+* System Calls and the User / Kernel Interface
+
+printf -> write explanation.
+ - printf() is a library call.  
+    - its parameters are managed by the C library, 
+    - printf() will "format" all the strings, and, eventually, call
+ - write(), the system call.
+    - write(1, buffer, length); <- the write() system call.
+            ^^ STDOUT_FILENO
+
+ Application <- your code. 
+  Libraries  <- make your code easy to write.implement a bunch of functions.
+   -------   <- user space to kernel space boundary
+    Kernel   <- can munge devices, processes.
+   Hardware  <- CE people.  that's you. :)
+
+ "system call" is a function that traverses this user/kernel boundary.
+   we'd like to minimize the number of these.  
+   rather implement all the important stuff in user space.
+
+
+
+How does the kernel know which system call was invoked?
+ there exists the syscall table, an array of function
+ pointers, the index of which is placed in a processor
+ register when the call is invoked.
+  /usr/include/sys/syscall.h
+
+
+File descriptor vs. file pointer.
+
+  fprintf(stdout, "blah\n"); (same as printf("blah\n");)
+    - or -
+  FILE *f = fopen("/tmp/x", "w");  << not a system call.
+  fprintf(f, "blah\n"); 
+
+  f points to a structure that includes a buffer (I think)
+  and the file descriptor number.
+
+  Kernel and the application share a view of an array of
+  files, the file descriptor is the index into this array.
+
+  fopen will call open, which will return the next available
+  index into this array.
+ 
+  (alternate meaning of file pointer is the current position
+   in a file).
+
+How to tell the difference between a system call and a standard C library call.
+  - man (function) -> if in section 2, it's a system call, if 
+    in 3 it's not.
+  - strace (command) from the shell.
+
+* Overview material
+
+** Virtual things
+  virtual memory (not the same as paging)
+    service that involves allowing applications/processes 
+    to use addresses that aren't necessarily (likely) the 
+    same as the physical address.
+    - then enables taking the physical pages and putting them on 
+       disk instead of keeping them in memory.   having the illusion
+       of larger memory.  (paging)
+
+  virtual machine
+    what's similar?
+      - still seeing an illusion.
+        - memory thought to be physical is likely virtual again.
+        - appearance of isolation
+
+    what's the difference between the interface made
+    available by an operating system and the interface
+    exported by a virtual machine?
+      - that of the appearance of hardware.
+      - operating system steps in whenever the app generates a trap
+      - virtual machine will step in whenever there's an "illegal"
+         instruction that must be virtualized.
+
+
+** Microkernels and extensibility
+
+What is a microkernel?
+ - veryvery small kernel. (too obvious to be correct.)
+ - extreme point in a design space:
+   - its features get incorporated elsewhere.
+ - incorporate into the kernel only what is absolutely necessary
+ - move functions into user-space, processes.
+   - managing filesystem (flushing buffers)
+   - network communication protocols
+ - opposite: monolithic kernel
+    - one big piece of software that has all the features
+
+Why would a microkernel be a good idea?
+ - limited memory -- kernel memory tends to be wired down, 
+     immovable, can't swap it.
+ - security -- small bits of code are easier to write, debug, 
+     and secure.  less likely to have a vulnerability, scope
+     of a vulnerability might be diminished.
+ - reliability -- could restart the bits that fail, if they do.
+     faults are (may be) contained
+ - runtime extensible (though loadable modules provide
+        similar benefit)
+
+  Mach is the canonical example of a microkernel.
+   Minix is cool too. (but I don't know it)
+
+Why is it tricky, 
+ - can be slower, higher overhead,
+   - cross that user / kernel boundary.
+     -> could involve lots of copies. 
+     -> copying data is pretty wasteful
+   - move data from one adress space to another.
+     -> "message passing" 
+
+** end 9/1
+** 9/3:
+
+Quiz Review.
+
+There is no magic: All conceptual things (files, processes,
+  locks, loadable modules, messages...) are represented by
+  data structures.
+
+Kernel modules
+ - (?) can still write small pieces of code,
+     - can still embed it into a larger kernel
+     - can still expect some interfaces.
+
+** Interrupts 
+What is an interrupt? 
+ - message, notification from a device or software that asks
+   the operating system to do some work.  (to handle the event)
+ - device has stuff to be read, sends an interrupt, os runs some 
+      service routine in a device driver.
+ - timer - while the processor is doing other stuff, there's a 
+      timer sitting on the side, and when the timer expires, 
+      interrupt!  
+    - useful for preemption
+ - software interrupt
+   - each interrupt (hardware, software) looks the same to the OS.
+   - system calls.   dos used int 13h,  linux at one time used 0x80. 
+   - also called a "trap" 
+ 
+** Batch processing vs. Timesharing, Real-time
+ Batch processing
+ - pick up a job, run it to completion, then pick the next one.
+   - programs encoded as stacks of punched cards.
+   - programs are running on clusters of machines.
+ Timesharing system:
+ - pick up a job, if it doesn't finish in a quantum, give the 
+    next one a try
+   - if the process yields the cpu by blocking on a device before
+     its quantum is over, the OS would hand control to the next 
+     ready process
+ Real-Time systems
+ - every task has a deadline.
+  - earliest deadline first is an ideal scheduling scheme
+  - prioritize tasks that have the longest duty cycle.
+
+** Embedded systems
+ - we're supposed to not really notice that they're there.
+ - run opengles :)
+ - task specific (not general purpose)
+ - controlled hardware (not a lot of drivers)
+  - no (very few) hard disks
+ - tend not to have an mmu 
+ - tend to run on very little power, in less space, smaller chips, 
+    fewer chips.
+ - OS would have to be tiny, but needs to do less.
+ - If you're interested in such systems, pay attention, since these devices
+   may have a minimal or no OS.
+ 
+** What is a file?
+ - named array of bytes, with metadata.  likely stored somewhere
+ - could include things that look like files:
+   - device files
+   - named pipes 
+   - /dev/kmem   (and /dev/mem ?)   where the array of bytes is the 
+        address space of the kernel (or of the machine)
+   - /proc where the directories represent processes and the files
+      represent a means of getting information about those processes.
+      ls -al /proc
+
+** What is a shell?   
+ - (just another) process that happens to help users run other processes.
+   - connecting stdin, stdout, stderr to the terminal, 
+   - job control to suspend, background processes  
+
+** Summary of the Operating System
+  The operating system is just a piece of code;
+    ->  all the things that it manages are just data structures
+  the only thing that might be "magic" are the 
+    strange interactions with the processor:
+    - special registers that the processor what to do on certain events 
+      (e.g. where the interrupt table is)
+
+
+* Processes
+** What is a process?
+ - "running instance of a program"
+ - program - the passive bits.
+ - has an address space
+ - has at least one context (i.e., thread) (instruction pointer, registers, stack pointer)
+ - resources (might be files, devices, shared memory segments)
+
+** Process state machine:
+ - in what states can a process be
+ - Running (we're on a processor! hooray.)
+ - Ready (wish we were running.)
+ - Waiting (aka blocked) doesn't want to go to state running.
+    - for some device, user, network, application to provide data.
+ - Zombie - dead, not yet reaped.  
+    - preserved is the exit status of the process.
+    - expecting the parent to call wait() (waitpid()).
+ - new state == ready  (not a distinct state)
+ - terminated == zombie (not a distinct state)
+ - stopped (waiting for SIGCONT - what happens when you ^Z)
+
+
+** Process description is bundled up in a PCB
+ - bad PCBs polychlorinated biphenyls.
+ - good PCBs are process control blocks.  
+   fun reading: kernel-source-2.6.8/include/linux/sched.h
+    - instruction pointer   
+    - registers
+    - memory management info (address space)
+    - set of open files (file descriptor table)
+    - process id - identifies the process
+    - process id of the parent - parent cares about your fate
+    - user id that owns the process.
+    - device the process is blocked on.
+    - exit status
+    - resource limits - threads, memory, cpu time, file table size.
+    - priority:
+      - static stuff (e.g., what happens when you run "nice")
+            (nice doesn't make the background task completely unobtrusive
+             because this affects only cpu (because of memory limitations)
+          - can go the other direction for stuff that is super important.
+          - stuff that the os knows is important somehow (
+      - can also be a dynamic property
+          - user input   
+          - generalize to having recently received input / stopped 
+              waiting for a device; database or web server process
+              is probably waiting on either: disk to return a block 
+              or a request to come in.
+             - anything that has been waiting gets bumped up in priority
+             - anything that consumed its entire time quantum last time
+                gets bumped down.
+         -> goal is to reduce perceived response time 
+             and to get a mix of active processes.  i/o bound 
+             and cpu bound at the same time.
+
+**  how can a process leave the running state?
+    pre-empted by the scheduler.   
+      timer fires, process has used the quantum, another process is "ready".
+    done.  calls exit.  (or exit_group() which is a 
+      distinction that doesn't matter)
+    sleep()/nanosleep() wait for some amount of time to pass.
+    accidental death through memory fault, divide by zero,
+       unhandled exception, 
+    killed by another process
+    act of god (sysadmin)
+    blocked on a device 
+      could be on a page fault waiting for the disk to give us the 
+       page of memory
+      or less obscure (kbd, disk, etc.)
+
+**  three granularities of process scheduling:
+    long term: which processes can start.  (more associated with batch processing)
+    medium term: which processes can occupy memory (or be swapped out)
+    short term: which of the runnable processes will get the cpu.
+      (more associated with time sharing)
+     
+**  dispatcher vs. scheduler
+    scheduler is the brains of the operation: 
+     decides which processes will get dispatched.
+    dispatcher is the brawn: does the task of switch, 
+     puts another process onto the processor
+
+** Scheduler / Dispatcher is an instance of policy / mechanism separation.
+    os people reinventing modularity
+    design an interface so that:
+      mechanism can be made fast.  (simple instructions to follow)
+        (implemented where readability does not matter)
+      policy can be made smart.  (configurable)
+        (modifiable)
+
+** the first user process
+   geekos: shell.exe
+   unix: init
+     launches daemons
+       what makes a process a daemon?
+         in the background, waiting for something to do
+         having no association with a tty;    
+     spawns getty (something that grabs tty's, then spanws login 
+       to presents login/password prompts on associated devices) 
+      tty is a representation of a console with display/keyboard
+     init also has responsibility to wait() to collect the exit
+       status of orphan zombies.
+   
+          
+**  how does the processor wake the operating system up?
+   periodically to maybe context switch threads/processes or
+   handle other periodic tasks.  
+
+  Classic periodic timer operation: 
+
+  8253 programmable timer chip.
+   1.19 mhz clock, and it's told by the processor how high to count.
+   once that overflows it raises the interrupt request line
+   "periodic" so it resets itself.
+
+  See: http://en.wikipedia.org/wiki/Intel_8259
+
+  8259 programmable interrupt chip.
+   8 input wires "interrupt request" lines that would be
+    raised whenever a device (in this case the the 8253) has
+    something to say.
+   1 of the outputs is the interrupt line to the processor
+   data bus to tell the processor which interrupt it tried to raise.
+   - apparently, these chips can be cascaded.  "master" 8259 and some slaves.
+
+  8086...386...etc. gets the interrupt, asks which one.
+
+  8253 wired up to interrupt request zero.
+   
+**  "context switch" process
+     context: set of register values.  reference to the program data.
+     switch: to achieve timeslicing or to get another process on the processors.
+ 
+  step 0: 
+     you're in the operating system somewhere.
+     you should've saved at least some application registers already. 
+        "Save_Registers in lowlevel.asm"
+     else you don't get to use them.
+
+  step 1:
+     pick another process/thread to run ('dispatch').
+       better be in the ready queue.  (otherwise it's blocked, done, or not "another")
+       by some scheduling "policy"
+        - the next one. (round robin)
+        - the best one. (most important)
+     put the running guy on the * and the new guy in state running.
+      "in state running -> referenced by "current" pointer"
+       * if we got here by the timer interrupt, back to the ready queue.
+       * if we got here by a blocking system call, onto a device queue.
+     take note of some stats:
+       - accounting "stuff" - how much cpu time the process has used.
+       - if the application used up the time slice, 
+         - might be frozen... 
+         - it probably is a background job and not that interactive, or important.  
+            don't have to schedule it so quickly.
+         
+  step 2:  save the state.
+     registers (incl program counter)
+     [[ kill off other instructions in the pipeline ]]      
+     
+  step 3:  restore the new thread/process state.
+
+ GEEKOS digression - -
+   pcb ("kthread") stored on a page, likely followed by a
+   page that is the stack for that process.
+
+End 9/3.
+        
+** "processor affinity"
+ - if you have a process running on a processor, might perform better 
+if it stays there and isn't moved.
+ - you might have a per-processor ready queue.  
+
+if you're running the OS on a bunch of processors, there are locks.
+ 
+** Scheduling basics:
+  I/O-bound jobs: will run for a very little bit, then block on a system call (read, write)
+     they use very little cpu
+     and so you can schedule them quickly, and the sooner they start blocking, 
+       the sooner they might finish.
+  CPU-bound jobs
+     these guys use lots of cpu.
+     they're probably not waiting for user input.
+       they can probably wait.  finish later.
+         goofy science app.
+         video transcoding, image processing.
+  a goal is to mix these:  i/o bound jobs don't contend with cpu-bound jobs.
+  another goal is to make the machine seem fast.
+    - prioritize things that the user cares about, that are interactive, 
+       that don't use a lot of cpu.
+
+  a process that uses up its entire quantum might take a
+    penalty to its priority.
+    quantum: 10 ms (or so) timeslice allocated to a process when it gets scheduled. 
+    if you use it up: bump down your priority, leaving space for the I/O-bound jobs.  
+
+** What's thrashing?
+  - a way of not getting any actual work done.
+  - spend all of the machine's time paging.
+    - two processes running, each require 2/3rds of memory to make real progress.
+    - by "require 2/3rds" likely to touch pages in this memory footprint frequently enough
+
+To fix:
+ (a) might increase the quantum
+    #define HZ in linux (I think)
+    give each process a longer time to make progress before getting kicked out.
+  - might not fix it.
+  - would likely make the machine less responsive.
+   (a1) could imagine dynamically altering the quantum.
+ (b) don't run java.  or use java -Xmx option.
+ (c) could kill stuff.
+  - negative progress.
+  - also don't get any work done.
+ (d) might try to alter priority to give one guy an edge. (seems like (a))
+ (e) "medium-term scheduling" or "swapping" - push the second app to the side, and let the
+    first one through.  (specific case of d, in which priority of the second process is... 
+    "forbidden")   probably seconds. 
+
+** short-term scheduling:
+  the stuff we talked about before:  which of those processes on the ready queue do we pick.
+
+** long-term scheduling:
+  which of the jobs we have to run will we start?
+    (context: batch processing)
+   might not run stuff until something else has finished.
+ - might not start a process until load is below a threshold. 
+ - scripts on linux in /etc/cron.daily each of these jobs is run one after the other. 
+
+END 9/3/15
+BEGIN 9/8
+ tomorrow in section:
+  quiz 
+   partially on malloc video (memory allocation) content.  
+    understand how malloc is implemented and how it may break.
+   partially on unix, makefile aspects.  complete unix review homework.
+   partially on lecture content re: pcb's and states
+   clarity to appear on piazza.
+  wednesday's quiz to be returned.
+  pipe stuff.
+
+
+* Operations on processes:
+** creation
+  kernel somehow has been given control of the processor.
+  kernel decides to start the first user process:
+    in unix-based operating systems: init
+    in geekos: shell.exe
+  what is the job of init? 
+   - reap the zombies with dead processes.
+   - no user command.
+   - init starts everything else.
+     - basic processes associated with the console.
+     - runs a script that will start the daemons. 
+       daemon: process with no interactive console that performs some service in response
+         to some requests.
+       examples: ntpd - network time protocol daemon
+                 httpd - blah blah
+                 inetd - tries to start network daemons on demand
+                   echod - hello.  hello.
+                 sshd - now you can login.
+                 memcached - job is to cache information across processes
+
+     how does init start another process?
+       fork();
+
+Once upon a time, people valued ease of writing software.
+
+ system("/bin/ls");
+ system("make");
+ system("./a.out");
+
+** system is not a system call.
+
+    system() takes a command (with the full line and everything)
+      to run, and runs it with sh, and returns the exit status 
+      of the new process when the it is done.
+
+** how is system() implemented?
+
+    exec() replaces the current program with a new one.  (keeps the 
+      pid, replaces the address space, starts at the top.)
+      (there is an exec "family" of functions)
+      if something goes wrong: -1
+
+    fork() takes the current process and "duplicates" it into one 
+      "parent" (that retains its pid) and a child (that gets a new one)
+      returns for the parent: > 0  (the child's pid)
+      returns for the child:     0
+      when something goes wrong: -1
+
+    wait() set of functions (we'll use waitpid) will wait for a child
+      to finish, and collect the exit status.
+
+int system(const char *command) {
+  pid_t pid = fork(); 
+  if(pid == 0) {
+    // the child
+    const char *arguments[4];
+    arguments[0] = "sh";
+    arguments[1] = "-c";
+    arguments[2] = command;
+    arguments[3] = NULL;
+    execv("/bin/sh", arguments);  // could fail.
+    exit(127);
+  } else if(pid > 0) {
+    // the parent
+    int exit_status; 
+    if(waitpid(pid, &exit_status, 0) < 0) {
+      return -1;
+    } else {
+      return exit_status;
+    }
+  } else {
+    // damn.
+    return -1;
+  }
+}
+
+**  How do processes die?
+  old age - they finish. whatever they wanted to do gets done: call exit().
+  they behave badly and are terminated. 
+    - unhandled exception thing: division by zero.  
+       illegal memory access.  
+       non-existent/illegal instruction. 
+   catastrophic failure: av williams power fails...
+   shutdown: signal might get delivered.  
+     - signal not handled: SIGHUP SIGKILL SIGINT 
+        (depending on what the app decided to handle)
+     - handle the signal, exit gracefully as if it's done.
+
+open question: kernel or shutdown command that gives the warning.
+
+---
+ 
+* Interprocess communication.  (IPC)
+  isolate processes through having different address spaces.
+  isolate processes from the kernel through the user/kernel boundary.   
+  yet, we'd like to be able to do interesting things.
+  why we want to be able to share data across processes:
+   1) example: might want to display images/stuff from one application/process 
+       in another (windowserver) process.
+
+   2) example: man shmat | more -- output of one process
+       wired to the input of another.
+
+   3) example: notification (growl on OSX), logging
+       (syslogd) - to provide a centralized and general
+       error logging facility, many process can write their
+       log messages to a daemon, that then can log those
+       messages to disk or to a central server.
+
+   4) example: pool of processes coordiating with each other
+       - qmail(?); apache maybe keeps cached documents in
+       shared memory (?) ;
+
+   5) example: database with a long-lasting cache and
+       short-lived failure-prone clients.
+
+  why would we use inter-process communication rather than
+     threads? (which share an address space, have
+     inter-thread communication for (almost) free)
+
+   1) isolation: if something breaks, one process dies,
+      (perhaps) no biggie.
+
+   2) reuse: shell bits (more/less), syslogd.; combine
+      code/function written by different people.
+
+   3) might want some kernel per-process state to be
+      different in the different pieces.
+
+      - different set of file descriptors:
+        = select() - any time you call it, the kernel has to run through the whole damn list.
+                 num_of_fds, bitmask, bitmask, bitmask, time. 
+        = kernel might be happier if your many processes are calling this on fewer
+           file descriptors per.
+      - uid, effective uid, etc.  <<<<<<<<<< important.
+         - some task running on behalf of the user, and another task running for the system.
+           - xserver, xterm.
+           - syslogd, apache (www-data / nobody).
+
+   4) you might be able to page out a process more easily?  if, for example....
+        find . -name "neils_hidden_file.*" | perl something.pl 
+      it might be that "more" has nothing to do for a long time, and doesn't 
+      need memory.
+
+   5)  might be a step toward running on different machines
+
+* Baby interprocess communication: files
+  You could write to a file, let the other process read from file.
+   - could be tricky to get the other guy to read the file... in 
+   - could be really slow - esp. if you have to wait for the
+  disk or for a free buffer.  But it is entirely portable,
+  and is how the compiler communicates with the linker.
+
+* Grown-up interprocess communication.
+**  Shared memory.
+    placement of the same segment (set of pages) into more than one address space.
+     - not necessarily at the same address in both address spaces.
+
+      (text segments can be "shared" across processes, but since
+       they're not (really) writeable, no one notices and that's 
+       not called shared memory)
+
+    shmget - allocate or fetch a shared memory region 
+           - if it's not already there, it allocates
+    shmctl - sets the permissions associated with the memory region
+           - don't want just anyone writing to our memory.
+           - also involved in freeing the shared memory region.
+    shmat  - attach (like open)  takes a hint of where in the 
+             address space to place it.
+    shmdt  - detach (like close)
+
+    
+   how do we pass data from process one (P1) to P2 with shared memory?
+    both processes invoke shmget, shmat on the same segment.
+    P1 writes some data in
+    P2 can read it.
+
+   how do we know in P1 if P2 has read the stuff (and thus
+      is ready to take more data?)
+
+    - separate the pieces of shared memory that will be
+       written by P1 from the stuff to be written by P2.
+
+    - P2 to write a sequence number, or a "pointer" to
+      indicate that it has read the stuff.
+
+    - semaphores, if a process can block waiting for the other
+
+  alternate implementation using memory mapped files.
+
+**Signals
+  lots of signals that stop short of -9 (-KILL); these signals allow one 
+  process (often "kill") to convey a command to another.  e.g., conventionally
+  -HUP (the terminal has hung up or disconnected) to a daemon (which has no
+  associated terminal) means to reload configuration.
+    
+  sigaction() is the most likely system call you might use.
+  signal() is the traditional system call to register a handler.
+
+**Message Passing
+  send, receive messages.
+   send to a group / wildcard.
+   receive from an individual or from a group.   
+
+  synchronous or asynchronous
+   send call waits until someone has received.
+
+  microkernel architectures require fast message passing. 
+
+  "remote" procedure call within message passing.
+
+**Pipes.
+  two types of pipes:
+   1) "ordinary" not named.   "anonymous"
+   2) named.  rarely (but sometimes) used.
+     "named" part puts the pipe in the file systems
+     typically, you'd rather use a socket on a well-known port
+      instead of a pipe at a somewhat well-known name.
+ 
+Implement popen(" ")
+  - library call that sets up one or two ordinary pipes
+    between the calling process and newly forked process
+
+  - you should remember this from the 216 shell project.
+
+   
+int popen_w(const char *command) {
+  int fds[2];
+  pid_t pid;
+
+  pipe(fds);
+  pid  = fork(); 
+
+  if(pid == 0) {
+    // the child
+    // has a list of file descriptors.
+    // 0: stdin 
+    // 1: stdout
+    // 2: stderr
+
+    // want 0 to be the read end of the pipe.
+    close(0); // optional 
+    dup2(fds[0], 0); // place the read end of the pipe onto stdin.
+    close(fds[1]);
+
+    const char *arguments[4];
+    arguments[0] = "sh";
+    arguments[1] = "-c";
+    arguments[2] = command;
+    arguments[3] = NULL;
+    execv("/bin/sh", arguments);  // could fail.
+    exit(EXIT_FAILURE);
+  } else if(pid > 0) {
+    // the parent
+    // int exit_status; 
+    // waitpid(child, &exit_status, 0);
+    return fds[1]; // exit_status;
+  } else {
+    // damn.
+    return -1;
+  }
+}
+
+int fd = popen_w("less");
+write(fd, "hello", 5);
+close(fd)
+wait(&exit_status);  
+
+
+Exercise for the reader: figure out how popen works for
+bidirectional communication with the new process.  how do
+the two pipes constructed from two calls to pipe(2) get
+associated with a single FILE *.
+
+END 9/8.
+Begin 9/10
+
+Example of a use of a pipe.
+  tar cvfz my.tar.gz geekos
+  tar cvf - geekos | gzip -c > my.tar.gz
+
+What happens if the child doesn't read data?
+  - if we write a lot of data to the child, we will block!  bad.
+  - there's some buffer, maybe 64k that the OS will hold on to, 
+     after which it assumes we should wait.
+  - child process has to compress/encrypt data, it might be
+    slower than the producer.
+
+What happens if the child dies before we're done writing data
+  - sigpipe when we write more data.
+
+Examples:
+  echo hello | cat
+  echo hello | true
+  echo hello | false
+  echo hello | true && cat  # hangs, why?
+  echo hello | (true && cat)
+  echo hello | (cat && true)
+
+  strace ls /tmp | head
+
+--
+Named pipes allow the process to define a place in the file system 
+  where another process can find the pipe.
+ - you don't have this parent/child relationship to the other side 
+    of the pipe.
+ - you do have a one-to-one binding: at a time, there is one "client" 
+    and one "server"
+ - you do not have many processes that want to talk to one.
+    - not for syslog.
+    - not for notification.
+----
+
+**Sockets.
+ Two types of sockets worth talking about
+ - UNIX domain sockets.
+    endpoint of communication is identified as a path in the file system 
+    a) the other endpoint of communication is on the same machine.
+    b) can protect that endpoint with file system permissions
+    c) each endpoint can ask the OS what user is associated with the other endpoint
+ - use Internet protocol sockets. <- 
+    endpoint of the communication identified by IP address and port. 
+    this scheme can talk across machines -- to processes running on other boxes.
+    bind() connect() read write etc.
+
+ For both of these types of sockets, there are two models of communication (not being precise)
+   datagram 
+   stream
+
+ socket(AF_INET, SOCK_STREAM, 0); // -> TCP - read and write ordered streams of bytes.
+ socket(AF_INET, SOCK_DGRAM, 0); // -> UDP - read and write (unordered) datagrams
+
+ UNIX domain sockets allow similar interfaces: write a
+   stream or write messages/datagrams.
+
+ Streams are generally connected - one endpoint to another.
+
+ Datagram sockets may not be connected - may provide a
+          destination separately for each datagram... which
+          means the "write" functionality will be provided by
+          "sendto", which takes both a buffer and a destination.
+          and "read" can be provided by 'recvfrom', which may
+          specify which sender is relevant.
+
+ Can even pass a file handle/describe to the other process.
+   specially formatted call to sendmsg (datagram-style call)
+  - can give a process access to a file it wouldn't
+    otherwise be able to see. (most useful?)
+  - some initial setup in one process, followed by further
+    work in another.
+
+ Why choose UNIX sockets over IP sockets?
+  - access control, ability to log users, etc.
+  - may be more efficient
+  - (could imagine using IP with the other side as localhost 127.0.0.1)
+        MTU (when the data doesn't have to go over a wire)
+        can be very large -- maximum transmission unit --
+        limit on the size of a datagram.  IP limits you to
+        64k;
+  - interesting question: whether unix datagram sockets will
+    block rather than drop messages.
+
+ Why IP over UNIX sockets?
+  - want the ability to talk to different machines.
+     - might run for now your database on the same machine as the application
+       server as the web server, but later (after wild success and IPO) you 
+       might want to run these other processes on other machines.
+
+ unanswered distinction between message passing (as defined
+   in text, used in microkernels) and datagram sockets.
+   - are unix datagram sockets connected?  ("man 4 unix" might answer this...) 
+    - if not "connected" then, like a UDP endpoint, can receive from many senders.
+      - you can connect a UDP socket.
+      - (if connected, can't receive from anyone else, at least for udp)
+ 
+   socket bind listen accept connect read write close shutdown 
+    
+   socket - returns a file descriptor associated with some protocol endpoint.
+      socket(AF_INET, SOCK_STREAM, 0); // -> TCP - read and write ordered streams of bytes.
+      socket(AF_INET, SOCK_DGRAM, 0); // -> UDP - read and write (unordered) datagrams
+      socket(AF_UNIX, SOCK_DGRAM, 0);  
+       kinda like "open" 
+
+    bind - takes that socket and associates it with some
+       "name" or "address" or "port"
+
+      some identifier for others to be able to contact this socket.
+      might be that you'd call bind() without providing it any information, in order
+       to get the kernel to assign it.
+      in IP sockets: 
+        struct sockaddr_in { 
+               sin_len = ?
+               sin_family = AF_INET;
+               struct s_addr ipaddress;  
+               unsigned short port;
+               // filler.
+        } 
+      in unix sockets:  
+           struct sockaddr_un {
+                   u_char  sun_len;        // 106-ish?
+                   u_char  sun_family;     // AF_UNIX
+                   char    sun_path[104];  // some path in the filesystem. not reused.
+           };
+          "path" exists in the virtual file system, not actually persistently stored.
+             (I could be wrong.)
+
+     listen - indicates that we'd like to accept incoming connections, with some 
+        backlog queue.
+
+     accept - given a file descriptor that is listening (and likely bind-ed), return
+        a new file descriptor that references the new incoming connection.
+
+     connect - given a socket and a remote endpoint, start up the connection on that socket.
+        for datagrams, creates an implicit destination for all messages (don't have to 
+          say where the datagram is going on every call)
+        for streams, well, now you have a stream.
+
+        trick: one way of figuring out your own IP address:
+          create a udp socket and "connect" it to some
+          destination, then ask the kernel using
+          "getsockname()" what the local endpoint was bound
+          to.
+
+     read, write - typically for streams
+     send, recv, sendmsg, recvmsg - typically for datagrams
+ 
+     close - ends the connection, no more socket.
+
+     shutdown - allows you to end halves of the connection.
+       takes flags:
+        SHUT_WR - I will do no more writing.
+        SHUT_RD - I will do no more reading.
+        SHUT_RDWR - I will do no more reading or writing. 
+             (like close, except file handle not reclaimed?)
+
+
+let's review processes one more time.
+
+what's the difference between a process and a virtual machine?
+ - what's the differences in communicating between processes
+     running on an OS and between virtual machines (vmware
+     for now) running entire operating systems and their applications?
+ - what's the interface between the process and the layer below
+     and that sort of VM and the layer below?
+
+
+Intermission - beginning synchronization 
+
+- http://www.cs.umd.edu/~shankar/412-Notes/synchro.pdf
+- http://www.cs.umd.edu/~shankar/412-Notes/concurrency-slides.pdf
+- Videos I'll post soon.
+
+- END 9/10
+- BEGIN 9/18
+ quiz tomorrow; topics online.
+ pa1 (fork / exec) posted, not yet on submit.
+
+
+* Threads: 
+   what does "thread" mean:
+     a context within a process, having its own stack and
+     registers, but sharing an address space.
+
+  what's the difference between a process and a thread?
+
+   - how does communication between threads differ from
+     communication between processes?
+     - threads share their address space (except their
+       stacks) "free" shared memory.
+     - processes have to explicitly set up shared
+       communication.
+
+   - processes can be run as (on behalf of) different users,
+     with different permissions
+ 
+
+**  Why threads:
+    (i.e., pthread_create() instead of fork() ?)
+   Instead of processes:
+
+    - switching between user-level threads may be faster
+      than switching between processes.
+
+    - might be faster to switch between kernel-level threads.
+
+    - cheaper for the kernel to manage a single process full
+       of user-level threads than to manage many independent
+       processes
+
+    - can kill em all at once...  (because you can't kill
+      them individually)
+
+    - as a programmer, easier to share memory (don't need
+       that shared memory segment, just use your globals.),
+       easier to share file descriptors,
+
+    - could, if at user level, decide priority of threads.
+
+    - potentially easier to spawn a thread than to fork a process.
+
+       -- in windows api, can't just fork, have to create a
+          process with an executable and permissions.
+
+       -- hooray cygwin for kludging a workaround.
+     
+
+   Instead of no threads:
+    - deadlock debate.  
+       - without threads, you have to be careful on an
+         potentially blocking call.
+
+       - with threads, you have to manage shared data,
+          potentially with locks, might run into the four
+          conditions of deadlock.
+
+    - multiprocessors.   
+       can implement threads in two ways:
+         - way 1: user code handles switching, preemption (if any)
+           - can be faster, unless giving up on having multiple processors
+           -> difficult to use more than one processor.
+         - way 2: kernel code handles switching, preemption (definitely)
+           - can be slower (switches require going into kernel)
+             (but probably not if multiple, idle, processors)
+           - can be harder to debug (preemption)
+         - way 3: some mix
+         
+    - application that mixes io-bound and cpu-bound
+        operations and could interleave the two.
+        (objection: one could encode cpu operations in an
+        event-loop-structured application)
+
+    - can provide threads with independent responsibilities: 
+        - deadlock detections
+        - error handling
+        - user interaction stuff
+ 
+
+**  How to divide your application into threads:
+   divide the tasks:  one thread per role
+
+   divide the data: image to process, split the image across
+   the different threads.
+
+   - keep the threads in balance (don't want one thread
+     doing all the work)
+
+   - avoid dependencies between threads (it does us little
+     good to have a thread active but blocked) limits
+     parallelism
+ 
+
+** USER LEVEL THREADS 
+ How do you make a user-level thread?
+
+ What does user-level thread #1 have that user-level thread
+    #2 does not? (restated, that thread #2 doesn't share,
+    has a different one...)
+  
+  each user-level thread must have a 
+   - stack.
+   - registers.  context.
+
+ We get no help from the kernel.   
+   how do we create a "new" stack?
+
+ We have two functions at our disposal 
+    context can be saved using setjmp().
+     - does it return?  yes, potentially more than once.
+    context can be restored using longjmp().
+     - does it return?  no. instead resumes from where
+       the corresponding setjmp is located.
+
+ To make a new stack, and thereby a new thread.
+
+  setjmp
+  call a function that uses 16k of automatic (local) variable space.
+  recurses our "thread spawing" function again.
+
+  longjmp back to the setjmp call,
+  start our thread there.
+
+  3 tricks:  
+
+ 1) thread just started (higher numerically stack space)
+    can't spawn a new thread in the same way, it would
+    clobber later threads.  instead only the thread at the
+    bottom of the stack can spawn new threads.
+
+ 2) threads can't "return", lest they mess up the stack of
+    another thread. instead, have to longjmp to a different
+    thread.
+
+ 3) if the thread "exits", you have to put it on a free list
+    so that it can take the next "spawned" thread.
+
+ unanswered: why not malloc?  (maybe you can?  would have to
+   directly edit the stack pointer, which may not be that
+   hard via stack smashing.)
+
+ Also have to make sure that otherwise blocking calls aren't.
+  i/o calls have to be wrapped so that it is:
+   {
+    set file descriptor to non-blocking mode
+    do the read or write.
+    if it worked, golden (set the fd back to block; then return)
+    if EWOULDBLOCK, 
+      manage sticking the thread on a waiting queue,
+      yield to the next thread.
+        (could, if nothing runnable, call select on all the waiting descriptors)
+   }
+
+  could also:
+   { 
+     select( only this file descriptor, in the mode that matters )
+     if ready, do and return,
+     if not ready, stick on the waiting queue.
+   }
+
+ Many convolved issues: 
+   1) avoiding spinning.
+   2) avoiding starvation.   
+   3) avoiding blocking. (as previously described.)
+
+Book describes the following models for user-threads matched
+to kernel-threads.
+
+ - one-to-one: not really a user-level thread idea.  each
+   thread is a kernel thread.  there aren't user threads.
+
+ - many-to-one: not such a kernel-thread idea, all the
+   threads are user-level threads, sharing one kernel thread,
+   on just one proc.
+
+ - many-to-many: some group of kernel-threads exchange the
+    user-level threads, almost as if the user-level threads
+    were run on many virutal processors.  each kernel thread
+    has the ability to pick up any (ready) user thread.
+
+** POSIX THREADS **
+
+POSIX threads:  there exists an example in the text
+  pthread_attr_init
+  pthread_create <- given a function pointer
+  pthread_join
+
+Thread pool
+ - "free list" for threads.
+   - x=malloc(48), free(x) 
+ - thread creation may be similarly expensive.
+   - don't fork a new thread on every request, only to have
+     it exit when the request is done.
+   - carry around a pool of ready to go threads, each
+     blocked on new work.
+
+     - can be somewhat more advantageous if you're dealing
+        with whole processes.  (not called a thread pool)
+
+ - can control the number of concurrent threads explicitly.
+
+Scheduler activations
+ - worldview: user-level threads are cheap.
+
+              kernel-level threads are necessary for
+              performance out of MP systems.
+
+              don't always know how many processor cores are
+              available or fair to use.
+
+ - kernel will "cooperate" with the user-level thread scheduler.
+    provides a signal that another user-level thread can be given control.
+
+   * processor allocation is the job of the kernel.
+
+   * thread scheduling is done by the
+     application. (advantage of user-level threads)
+
+   * kernel notifies the application whenever there's
+     something that affects the address space.
+
+   * application tells the kernel when there's something important
+     -- when there are more or fewer threads demanding processors.
+
+END - 9/15
+BEGIN - 9/17
+
+ two underlying system calls for malloc:
+  - brk / sbrk() - which expands the heap, useful for small
+    allocations.
+  - mmap() - which gets some new pages somewhere near where
+     shared libraries are loaded, or off the bottom of where
+     the stack is allowed to go.
+
+pthread strace:
+
+ strace -> mmap, mprotect, clone; mmap makes clear that each
+   thread has it's own happy little stack in the single
+   shared address space.
+
+Warning: 
+  don't put while(1); in the body of your threads.
+
+
+Win16 threads
+  thread stacks...  (fun reading)
+     https://developer.mozilla.org/en/Using_Addresses_Of_Automatic_Variables_With_NSPR
+
+ 
+-------
+** Thread (and signal) safe code
+
+ thread, signal safe code; interactions between threads and
+ signals.
+
+  what's an example of a non-reentrant function?  to which
+   thread should a signal be delivered?
+
+  * strtok - (a) it mangles its input (doesn't make it
+                 non-reentrant)
+             (b) holds state -- you pass "NULL" to it a
+                 second time.
+
+      strtok(const char *, const char *sep);
+                        << you could imagine this.
+
+        ; would duplicate the string behind your back....
+        ; but then it'd have to release it.
+
+      strtok(char *, const char *sep); <<  this is reality.
+      "the" <- strtok("the quick brown fox", " .;:")
+      "quick" <- strtok(NULL, ".;: ")
+
+  * gethostbyname - "standard" hostname to ip address
+    resolver function.
+
+      - stores the result as a global, returns a pointer to
+        that piece.
+
+  * system calls that set errno also count.
+      - system call fails, returns -1; if another system
+        call were to succeed, errno would be cleared.  (I
+        could be wrong.  Hooray, it's unspecified.  all
+        answers are correct!) if another system call were to
+        fail for a different reason, then you'd be confused.
+
+  If you were to call one of these functions inside a thread
+   or signal handler, screwed you are.
+
+  Find functions with _r in the name (redesigned to avoid
+    such problems)  e.g., strtok_r, gethostbyname_r.
+
+* Signal Handling
+
+  Conventional wisdom for writing a signal handler.
+
+  Signal - means for the OS to notify a process of some
+    event, possibly generated by another process.
+
+         - implemented by assigning function pointers to
+           signal numbers.
+
+           - or, that a signal should be ignored.
+
+           - or, that a signal should result in the process
+             terminating.
+
+      For example, if the process has written to a pipe
+      where the other end has died.
+
+      The OS might send SIGPIPE.
+        - which then kills your process.
+        - probably a good idea in general: cat /dev/zero | more 
+        - probably a bad idea for, say, firefox, that might
+            not want to die just because some child process
+            misbehaved.
+
+      SIGINT - ^C
+      SIGKILL - really go away.
+      SIGHUP - the terminal hung up (good old modem days)
+      SIGUSR1 SIGUSR2 - for whatever you want.
+      SIGWINCH - signal that your pty's size changed
+           (default action is to ignore)
+      SIGALRM - (my least favorite)
+  
+  function pointer handed to the os is the signal handler.
+      
+  When handling a signal: set a flag.  just set a flag.  let
+  the main thread of execution take care of whatever action
+  was important.  Don't try to do anything clever.  Do no
+  I/O.
+
+* Chapter 6: Synchronization.
+
+with threads, and processes, and many processors on modern
+hardware lots of stuff can be processed at the same time:
+concurrency.  the downside is that we have potential for
+race conditions.
+
+** race condition 
+ -- any code, any action, where the durable outcome depends
+ on timing, who gets there first, (or last).
+
+      book: "when the outcome of execution depends on the
+        particular order in which the access takes place"
+      a flaw in which timing (luck) determines whether the 
+        outcome maintains system invariants (the consistency
+        of your data structures).
+      imagine the kernel switching contexts at the absolute worst 
+        possible time.
+
+
+ if the thread body is:
+  
+   { 
+     counter += 1;
+   }
+
+ 1. load the value at the counter
+ 2. increment the value in the register
+ 3. store the value back out to memory.
+
+  if our thread is interrupted in the middle of this procedure, 
+  something won't work.  either we'll increment a stale value, 
+  or maybe we'll store a stale value.
+
+  simplest example ever.
+ 
+  nearly impossible to debug.
+
+The reason we talk about this stuff (again) in this class is
+that operating system has these issues in spades: many
+kernel threads, many interrupts, both of these things create
+concurrency.  pressure to be very efficient, fast, and
+exploit all the available concurrency.
+
+** One big lock 
+
+An option is to protect all kernel structures from any race
+condition with one, big lock.  Pretty close to disabling
+interrupts any time you want to access stuff without being
+interrupted.  (which is the approach in geekos).
+  disadvantages:
+
+   - limits concurrency: you could probably do other things
+     at the same time, maybe one kernel thread wants to
+     manipulate an I/O queue while another wants to
+     manipulate memory pages. (or just different devices...  
+     or sockets... or something).
+
+   - no separation between read locks and write locks - could 
+     extract more parallelism (perhaps) if there were non-exclusive 
+     locks.
+   
+   - there's more, we'll come back here.... maybe.
+
+** The Critical Section Problem
+  how to protect data elements by accomplishing the following four goals:
+  (A) allowing only one process to be in its critical section at a time.
+  (B) "progress": those procs not in their critical sections can't block those that want to be in.
+  (C) bounded waiting: can't block indefinitely to get in.
+  (D) not assuming anything about the speed or number of CPUs. 
+
+*** Simple answer #1: disabling of interupts
+  great, except:
+  (1) can't let applications do it, lest they hose the machine.
+  (2) in the kernel, it is coarse-grained: 
+      you might only have to disable related interrupts 
+      and not "more important" interrupts (if such things are available)
+  (3)  multi-processor systems.  (other processors will keep at it)
+
+-- END 9/17
+-- BEGIN 9/22
+
+* git.
+  %  git commit -am "I think this works"
+  %  git pull
+
+  or sure, git stash if you're a gitmaster.
+
+* if it gets stuck, your network is probably busted.
+  %  ping scriptroute.cs.umd.edu
+
+* what's changed
+    did not fix pz bugs 
+    .gitignore
+    bugfix for interrupt asymmetry on sys_write, exit.
+    segment.c includes an interface for allocating a segment
+      descriptor (GDT entry) on a particular CPU.
+    [ testing code references this interface ] 
+
+    The current GDT is truly global - one per system.
+ 
+    I'm working on an assignment where you can introduce a
+      per-cpu GDT to permit per-cpu variables, correcting,
+      for example, get_current_thread() in smp.c, and enabling
+      per-cpu run queues and other data structures.
+
+    Brokenness of get_current_thread() / CURRENT_THREAD.
+
+* I want to call function X() in y.c, but I can't find it in
+   an include file, should I copy-and-paste its contents?
+
+* next quiz:
+    usual project review material, continued C/pointer review.
+    synchronization video basics.
+    vocabulary: exception / interrupt / trap
+    practicalities: interrupt_state structure creation, contents, use.
+
+--
+
+*** Simple answer #2: have some sort of "lock" variable.
+  if it's zero, set it to one and claim the lock,
+    when done, reset to zero.
+   to lock: 
+      while(lock!=0); lock = 1;
+   to unlock:
+      lock = 0;
+  great idea: except the lock itself needs to be protected.  
+      (more than one thread could see it be zero and set it to one at the same time)
+    Example: 
+      Thread A        |   Thread B
+     top:               top:
+      load lock
+      bne top    
+                      |   load lock
+                      |   bne top       ; if lock == 0, flags will set equal.  if !=, go up
+                      |   store lock, 1
+      store lock, 1
+
+*** Simple answer #3: alternate.
+  when I'm done with my critical section, I'll tell the next process, it can be his.
+  let "turn" be the variable describing whose turn it is to enter the critical section.
+
+     initial state: turn = 'A' 
+  
+    Thread A
+     lock:
+      while (turn != 'A');
+     unlock:
+      turn = 'B'
+
+    Thread B
+     lock:
+      while (turn != 'B');
+     unlock:
+      turn = 'A'
+
+  could extend it to be turn = (turn + 1) % number_of_threads
+
+  great, except violates "B" - if thread 1 doesn't want the
+   critical section, it won't take its turn, preventing
+   thread 0 from entering again.
+
+** Peterson's solution
+  Two processes only: my_id, other_id are 0 and 1 (unless you're in the other thread)
+
+  Two shared fields:
+    int turn;
+    bool flag[2];
+
+  To acquire the lock / enter the critical section:
+    flag[my_id] = true
+    turn=other_id
+    while(turn==other_id && flag[other_id]); // loop. 
+
+  To exit the critical section:
+    flag[my_id] = false
+
+
+ * If both call "enter" at the same time, one of those "turn=other_id" will stick.
+ * the thread whose setting of turn sticks will cause the other thread to fall through 
+   and it will stay blocked.
+ * the blocked thread will wait until the blocking thread leaves.
+
+ If thread 0 acquires the lock, and is in its critical section, and thread 1 is elsewhere.
+   flag[0] = true 
+   flag[1] = false 
+   turn=1
+
+ If thread 1 comes along:
+   flag[1] = true
+   turn=0
+   will spin until flag[0] is cleared.
+
+ If both start at roughly the same time:
+
+   flag[0] = true 
+                              flag[1] = true 
+                              turn=0
+   turn=1
+   while(turn==1 && flag[1]);
+                              while(turn==0 && flag[0]);
+                              hooray! 
+                              ...
+                              flag[1]=false;
+
+                          get the lock again
+                              flag[1] = true
+                              turn=0
+                              while(turn==0 && flag[0]);
+                                  block
+   hooray.
+
+why can't you extend this to three threads?
+
+
+** Bakery algorithm (not in the text... but I'll borrow from wikipedia)
+ providing roughly the same as Peterson's solution, only for more processes.
+
+ scheme "take a number"
+  1. choose your number.  choose a number higher than anyone else
+      if nobody's around (all numbers are zero) you'd pick 1.
+  2. wait until all the processes with lower numbers finish.
+  3. use your tid/index to break ties.
+
+        // declaration and initial values of global variables
+        Entering: array [1..N] of bool = {false};   
+        Number: array [1..N] of integer = {0};
+        
+     1  lock(integer i) {
+     2      Entering[i] = true;
+     3      Number[i] = 1 + max(Number[1], ..., Number[N]);
+     4      Entering[i] = false;
+     5      for (j = 1; j <= N; j++) {
+     6          // Wait until thread j receives its number:
+     7          while (Entering[j]) { /* nothing */ }
+     8          // Wait until all threads with smaller numbers or with the same
+     9          // number, but with higher priority, finish their work:
+    10          while ((Number[j] != 0) && ((Number[j], j) < (Number[i], i))) {
+    11              /* nothing */
+    12          }
+    13      }
+    14  }
+    15
+    16  unlock(integer i) {
+    17      Number[i] = 0;
+    18  }
+    19
+    20  Thread(integer i) {
+    21      while (true) {
+    22          lock(i);
+    23          // The critical section goes here...
+    24          unlock(i);
+    25          // non-critical section...
+    26      }
+    27  }
+    
+ ( this implementation assumes numbers don't wrap )
+ ( the only time that this would matter is if you always had someone waiting,
+   because unlike the roll of numbers at the dmv, the numbers reset to zero )
+
+** Hardware instructions that matter.
+ If we had only a single processor machine, these primitives might suffice.
+ On the multiprocessors, we need some help:
+   - owning the memory bus, so that only one instruction can perform an 
+      atomic read/write to acquire a lock.
+
+ Two types of instructions:
+   test-and-set
+   swap (or exchange)
+
+*** Primitive #1: TSL (test and set lock) 
+    testandset(int *lock_address)
+       register <= *lock_address
+       *lock_address <= 1 
+       return register
+
+    TSL eax, [memory_location]
+  
+  acquire:
+    we want the event that our process *set* the lock.     
+    when the lock value goes from 0 -> 1, we got the lock.
+       other possible case, at the end of test and set: 1 -> 1.
+  
+    while(test_and_set(lock) == 1); // spin.
+
+  release: 
+    lock = 0;
+
+*** Primitive #2: swap.
+  Swap(boolean *a, boolean *b)   // all atomic, again.
+    tmp = *a
+    *a = *b
+    *b = tmp
+
+  acquire:
+    register=true
+    while(register) Swap(&lock, &register) // looking for lock 0 -> 1, which would put 0 in k.
+
+  release:
+    lock=false
+
+** The hardware instructions have some downsides:
+  (a) busy-waiting.  both cases, we're stuck on a while loop.
+        not necessarily bad, if you have reason to believe
+        that the wait will be very short. -- if the time it will
+        take to busy wait is less than the time it will take to 
+        set up the data structures to block, then yield (context 
+        switch), you might as well keep spinning.
+  (b) possible starvation: a thread that just gave up the
+        lock could reaquire it before a waiting thread can
+        get it.  (doesn't solve bounded waiting)
+
+
+** more precise implementation of a spinlock in 386 assembly (also from the wikipedia)
+
+ lock:                       # The lock variable. 1 = locked, 0 = unlocked.
+    dd      0
+
+ spin_lock:
+    mov     eax, 1          # Set the EAX register to 1.
+
+ loop:
+    xchg    eax, [lock]     # Atomically swap the EAX register with
+                            #  the lock variable.
+                            # This will always store 1 to the lock, leaving
+                            #  previous value in the EAX register.
+
+    test    eax, eax        # Test EAX with itself. Among other things, this will
+                            #  set the processor's Zero Flag if EAX is 0.
+                            # If EAX is 0, then the lock was unlocked and
+                            #  we just locked it.
+                            # Otherwise, EAX is 1 and we didn't acquire the lock.  
+                            
+    jnz     loop            # Jump back to the XCHG instruction if the Zero Flag is
+                            #  not set, the lock was locked, and we need to spin.
+    
+    ret                     # The lock has been acquired, return to the calling
+                            #  function.
+
+ spin_unlock:
+    mov     eax, 0          # Set the EAX register to 0.
+
+    xchg    eax, [lock]     # Atomically swap the EAX register with
+                            #  the lock variable.
+
+    ret                     # The lock has been released.
+
+
+Other bits about spinlocks:
+ (1) busy waiting.
+ (2) can be unfair. (can starve others)
+ (3) various production operating systems will spinlock if they believe the lock 
+       is about to be released.   (else they'll find a way to block)
+       about to be released: (a) the lock is not intended to be held for a long time
+           (b) the process holding the lock is running (maybe runnable)... not sleeping.
+     - might be more efficient to spin on the cpu/bus for a little bit, rather than
+       context switch.
+
+* Ticket locks
+  now serving counter.
+  rely on atomic increment to distribute the tickets.
+  used in linux.
+
+* Semaphores:
+ synchronization primitive with a counter and two operations.
+   P (proberen, test, try, down, wait)
+   V (verhogen, increment, raise, make higher, signal)
+   counter (which is decremented by P, incremented by V) 
+      will not become negative.  (only becomes as negative as the number of blocked prcesses)
+    counter can become positive and even large, typically to represent 
+      the availability of resources.
+    the counter is internal state that cannot be queried (because it cannot be queried
+    safely)
+
+** what does it mean for a semaphore value to be larger than 1?
+  -> counting semaphore. intended to represent some number of (roughly identical) resources.
+     perhaps a number of buffers. 
+  alternative: binary semaphore in which a >1 value means a bug.
+     note that signal can be called arbitraily many times.  
+
+ to have a critical section with semaphores
+   wait(mutex)
+    do the critical stuff
+   signal(mutex)
+    do the other stuff.
+
+** to provide blocking semaphores
+   construct a queue:.
+   each semaphore:
+   struct semaphore { int value; Thread_Queue wait_queue; }
+   wait: (atomic operation, better disable interrupts in geekos)
+     S->value--;  // may become negative.
+     if(S->value < 0) {
+        Enqueue_Thread(S->wait_queue, g_currentProcess);
+        Schedule();  
+     }
+   signal: (atomic operation, better disable interrupts in geekos)
+     S->value++;
+     if(S->value <= 0) {
+        Make_Runnable(Remove_From_Front_Of_Thread_Queue(S->wait_queue))
+     }
+
+  (note that this implementation violates the rule about the counter not 
+  being negative, but the interface should be the same.)
+
+* END 9/22
+* BEGIN 9/24
+
+ KASSERT.
+ KASSERT0(condition, "explanation");
+  fn(void *page_parameter) {
+   KASSERT((page_parameter & 0xfff) == 0, "I expected a page address.")
+
+ Print.
+   build/output.log
+
+ thread apply all bt / where / thread 0
+    
+ p /x *state
+
+ disassemble /m 0x1bc34
+  [i386-elf-]gdb build/user/fork.exe   (if it was user code)
+
+ grep -C3 entryAddr */geekos/*
+
+
+
+** Little Barrier exercise.  Threads one and two want to wait for each other.
+  WHY? - two threads want to read the same data sequentially.  If they stay together,
+    they might share a cache and go faster than having two streams read from disk.
+  WHY ELSE? - two threads might want to exchange partial work, maybe parallel sort.
+ 
+  
+
+
+** Classic problems = producer/consumer with a bounded
+   buffer (first); reader-writer problem.
+
+ bounded buffer: limited size, could imagine as a circular buffer.  
+    if full, producer should stop.
+    if empty, consumer should stop.
+ goal: block the processes that are not ready to run.
+
+ classic motivation for counting semaphores.
+
+  implemeted using two^H^H^Hthree semaphores:
+    one to block the producer when he's filled all the buffers.
+    one to block the consumer when he's consumed all the buffers.
+    one to protect the buffer from concurrent access.  (there are 
+      likely some pointers involved.)
+
+  initial condition: 
+    consumer should be blocked.
+      Semaphore_of_full_buffers.counter = 0;
+    producer should be able to run.
+      Semaphore_of_empty_buffers.counter = number_of_allocated_buffers.
+
+  producer:
+    i = produce_item();  /* need not be in any critical section */
+    wait(Semaphore_of_empty_buffers)
+    wait(buffer_mutex)
+    insert(i) into buffer
+    signal(buffer_mutex)
+    signal(Semaphore_of_full_buffers) 
+    goto producer; (loop)
+       
+  it is almost never the case that a lock will make sure that it's
+    "owner" is the one who calls unlock().   be very afraid.
+    if you believe that only the owner should unlock, write some
+    code to verify that.
+ 
+  consumer:
+    wait(Semaphore_of_full_buffers)
+    wait(buffer_mutex)
+    i = get_from_buffer()
+    signal(buffer_mutex)
+    signal(Semaphore_of_empty_buffers)
+    consume(i)
+    goto consumer; (loop)
+
+
+
+brief introduction to deadlock: swap wait(mutex) with ... anything.
+
+* reader/writer locks
+
+  "reader/writer locks"  -> reads are not exclusive, but writes are.
+  data that threads can all read simultaneously, but if it was to be modified
+   you'd have to keep all the readers away.
+
+  hope that "readers" can be done quickly, or in bounded time.
+  in transaction-land, a query will grab the read lock and
+     hold it until it's done with the transaction (which could
+     be a while if it's waiting for other locks)
+
+  two classes of solution:
+   1) readers can't be stopped by a waiting writer.
+   2) readers can't start if there's a waiting writer.
+  who's gonna starve?
+
+  implementation using semaphores
+
+   S_writing_mutex -- to be held by the writer, or (collectively) 
+                      by the readers
+   S_reader_mutex -- to be held by the readers when updating the 
+                     count of active readers
+   num_active_readers -- the number of readers that concurrently 
+                         (collectively) hold the lock.
+   S_wants_to_write -- 
+
+
+  as a writer:
+   wait(S_wants_to_write)   // added for blocking readers
+    wait(S_writing_mutex)
+     perform the write.
+    signal(S_writing_mutex)
+   signal(S_wants_to_write)   // added for blocking readers
+
+  
+  as a reader:
+    // don't want to do anything if a writer holds S_writing
+    // if there are active readers, we're clear to proceed.
+    //  existence of an active reader -> readers are permitted.
+    //  "pretend" that all readers are one writer.
+   
+   wait(S_wants_to_write)   // added for blocking readers
+    wait(S_reader_mutex);
+    num_active_readers++;
+    if(num_active_readers==1) {
+      wait(S_writing_mutex);
+    }
+    signal(S_reader_mutex);
+   signal(S_wants_to_write)   // added for blocking readers
+  
+    perform our read    
+
+    wait(S_reader_mutex);
+    num_active_readers--;
+    if(num_active_readers==0)
+      signal(S_writing_mutex);
+    signal(S_reader_mutex);
+  
+
+ lines with comments shift to prevent waiting writers from
+ being starved by a stream of waiting readers.
+
+*  Condition Variables and Monitors.
+
+  Condition variable:
+    x.wait   (will always wait)
+    x.signal (will wake up just one waiting process)
+              if nothing is waiting, nothing happens.
+    signal-all (another way of implementing signal that might require
+               threads to go back to sleep if they didn't "get" what
+               they waited for.)
+
+  Can be implemented using semaphores.
+  Often combined with monitors
+
+**  Monitors:
+   "wah.  semaphores are too hard.  I want something easier".
+  
+   Define a set of routines and data items s.t. only one routine can be active at a time.
+   Java's "synchronized" stuff.
+
+* END 9/24
+* BEGIN 9/29
+
+*** Mental model
+   an "object" can be guarded by a monitor:
+    only one thread can be "active" in the monitor-guarded functions
+    at a time.
+   first-cut mental model: 
+    class foo  synchronized  {
+      function a {
+         ...
+      }
+      function b {
+         ...
+      }
+    }
+   compiler adds synchronization bits to these functions:
+    class foo {
+      function a {
+         semaphore_wait(this->mutex)
+         ...
+         semaphore_signal(this->mutex)
+      }
+      function b {
+         semaphore_wait(this->mutex)
+         ...
+         semaphore_signal(this->mutex)
+      }
+    }
+   remember, that's a white lie.
+
+** Using monitors and condition variables example  
+  Example: Bounded buffer producer / consumer using monitors.
+   monitor OurBoundedBuffer
+     condition not_full, not_empty;
+     integer count;  // number of things in the buffer.
+     int N = BUFSIZE;
+     
+     insert(item) {
+       while(count == N) wait(not_full);
+       really_insert(item); // put the item in the buffer. 
+       count++;
+       if(count == 1) signal(not_empty);  // or, just signal all the time.
+     }
+    
+     remove() {
+       while(count == 0) wait(not_empty);
+       retval = really_remove(item); // remove the item from the buffer. 
+       count--;
+       if(count == N-1) signal(not_full);
+     }
+   end
+
+   producer:
+      while(not_done)
+          item=really_produce_an_item
+          insert(item)
+      end
+   consumer:
+      while(not_done)
+          item = remove()
+          really_consume_the_item(item)
+      end
+
+  There are two schemes for what to do when the program calls signal:
+    signal-and-continue  - if you woke up another thread with your signal,
+        keep running until you're done with the routine (or longer).   TYPICAL.
+    signal-and-wait  -  if you woke up another thread with your signal, you
+        let it run. "Hoare semantics" - RARE.
+
+**  Monitor implementation with semaphores  (using Hoare semantics)
+
+  Procedure() {
+    semaphore_wait(mutex)
+      body of the procedure
+    if(next_count > 0) // count of things that are waiting on a semaphore
+                       // because they were signaled but can't take the
+                       // mutex.
+      semaphore_signal(next)
+    else
+      semaphore_signal(mutex)
+  }
+
+ condition variable x:
+
+
+ x.wait():  // precondition: "we" hold mutex.
+   x_count++   // the queue will be kept by the sem.
+   // have to allow another procedure to enter, so that we can be awakened.
+    if(next_count > 0) // count of things that are waiting on a semaphore
+                       // because they were signaled but can't take the
+                       // mutex.
+      semaphore_signal(next)
+    else
+      semaphore_signal(mutex)
+   semaphore_wait(x_sem)  // should go to sleep.
+   x_count--;  
+  
+ x.signal():
+   if(x_count>0) {
+     next_count++; /* increment the count of threads that are "in" the
+                      monitor, but waiting to get back */
+     semaphore_signal(x_sem);
+     semaphore_wait(next);
+     next_count--;
+   } else { 
+     /* nothing */ 
+   }
+ 
+
+ 
+** Dining Philosophers
+   n chairs, circular table, paired utensils s.t. each philosopher would need both 
+    left and right to eat.
+   can't grab more than one at a time.
+   hard to setup so that there is no deadlock: if everyone picks up the left side first, 
+    philosophers may starve.
+   classic synchronization problem.
+
+  strawman scheme: treat each fork as a resource, when
+   hungry, acquire the mutex for each fork, while holding
+   both, you're eating; release them both to think, repeat.
+
+   philosopher behavior is:
+     acquire right fork
+     acquire left fork
+      eat
+     release right 
+     release left
+
+   if every philosopher does this at the same time, deadlock.
+
+   could alter the circular wait problem by having just one 
+     philosopher use the alternate scheme: 
+     acquire left fork  (I swapped these)
+     acquire right fork
+      eat
+     release right 
+     release left
+
+   a scheme for "solving" this is to find a way to acquire the forks
+    at the "same" time, potentially by putting fork acquisition in 
+    a critical section...
+
+ Monitor-using solution:
+   each philosopher in the array has a state (thinking, hungry, eating)
+   chopsticks / forks are tracked implicitly (not as variables on their own)
+   initial condition: all are in state thinking.  
+
+   test(philosopher_idx)
+     if philosopher_idx+1 is not eating and
+        philosopher_idx-1 is not eating and
+        philosopher_idx is hungry then
+               set philosopher_idx to eating.
+       signal (wake up) philosopher_idx  (someone else calls test on our behalf)
+     end
+
+   pickup() // go from state thinking to hungry (and hopefully to eating)
+     set my_idx to hungry.
+     while not eating 
+        test(my_idx) // then, either we're still hungry, or we're eating.
+        if still hungry, wait  
+
+   putdown()   // go from state eating to state thinking.
+     set my_idx to thinking
+     test(my_idx-1)
+     test(my_idx+1)
+
+  might "starve" because the hungry philosopher cannot stop 
+   immediate neighbors from grabbing forks.  (there's no queue.)
+
+*** Exception / Interrupt state structure.  11:38.
+
+** END 9/29
+** BEGIN 10/1
+
+"Consider each programming assignment to be a take-home exam."
+
+* transactions.
+  ACID.
+  Two-phase locking.  
+
+  performance and concurrency.  
+
+** ACID - stands for the four properties of a transaction
+    system Atomicity, Consistency, Isolation, Durability
+
+***  Atomic: 
+   either the transaction (all of its little operations) happens or none of it does.
+   if all of them occur:   commit.
+   if none:  abort.
+    - might imply rollback, undoing any changes to the database that were made as part of 
+      the partially completed transaction. 
+   if anything goes wrong - say a server is busted, you run into deadlock, someone's account
+      balance would become negative - abort.
+
+   it's possible that you can't really abort, if the transaction had side-effects.
+      may require a "compensating transaction" to undo a committed act.
+
+***  Consistency:
+   integrity of data is preserved.  
+      invariants like a savings account never has a negative balance. 
+   as long as your operations preserve these invariants, the transaction processing system
+      wont' break them.
+   this is almost entirely a property of the individual transactions and business logic.
+
+***  Isolation: 
+   to every transaction, it should appear as if it is alone.  as if it is the only 
+    transaction running in the system.
+   serializability:
+     there must be some order in which you can place the
+     transactions that would have the same result as if they
+     were all run independently.  (even though they are
+     running concurrently).
+
+   obviously, if there is no concurrency, you have the schedule/order.
+   the order is not necessarily the order in which transactions start or commit.
+
+   Transaction1 (T1): a = read(x), a++, write(x, a), commit
+   Transaction2 (T2): b = read(x), b++, write(y, b), commit
+
+   could execute operations in the following order:
+      t1read(x) t2read(x) t1write(x) t1commit t2write(y) t2commit
+
+   will look like:
+      T2, then T1 ran.
+      y = original x + 1
+      x = original x + 1
+ 
+   if instead we said that T1 ran before T2, x = original x + 1, y = original x + 2.
+
+   but T1 started first, and finished first.  but in the virtual ordering of all transactions,
+    it is as if T2 ran before T1.
+
+   Two-Phase Locking
+     1. it avoids race conditions.
+     2. it provides serializability
+     3. if you don't release the locks until you're committing, avoid cascading aborts.
+         
+     growing phase - acquiring locks.
+     shrinking phase - giving them up.
+
+      Transaction1 (T1): a = read(x), a++, write(x, a), commit
+      Transaction2 (T2): b = read(x), b++, write(y, b), commit
+
+    can't have:
+      t1read(x) t2read(x) t1write(x) t1commit t2write(y) t2commit
+    would have:
+                          ^^ blocked on acquiring the write lock
+      t1read(x) t2read(x) t2write(y) t2commit ->t1write(x) t1commit 
+
+    if you didn't do reader/writer locks and just had mutexes:
+      t1read(x) t1write(x) t1commit -> t2read(x) t2write(y) t2commit
+     (nice enough illustration of concurrency enabled by reader/writer locks)
+
+
+      (try to ignore the indentation, it's not well considered)
+      t1_lock(x, reading) t1read 
+        t2_lock(x,reading) t2read 
+          t2_lock(y, writing) t2write 
+          t2commit 
+          t2_unlock(y)
+        t2_unlock(x)
+        t1_lock(x,writing) t1write 
+      t1commit 
+      t1_unlock(x)
+
+   Deadlock:
+     T1 T1'
+     T1: read(x)        | write(x)
+     T1':       read(x) |      write(x)
+    abort!
+
+   Aside: there's also something called two-phase commit,
+    which has two phases, but shares nothing else in common.
+
+   
+
+***  Durability
+    if the transaction commits, it should be durable, it should last.
+       even if the machine crashes.
+    define the "commit" to be when the "commit" record hits the disk.
+
+    write-ahead logging: 
+      log the transaction start
+      log before and after values for every operation
+        - after it's logged, we can update the data values in place.
+      abort:  log that we actually aborted, ensure that all the operations are undone
+      commit:  log that we committed, ensure that all the operations are done.
+      checkpoint:  for some point in the history of the log, all operations have been written
+        to disk where they really belong. 
+
+    on recovering from a crash,
+      walk forward to the last checkpoint,
+      walk back to where the checkpoint pointed (the last update / record that might not 
+        have been flushed to disk.)
+      replay any operation from a committed transaction
+      re-undo any operation from an aborted transaction (anything that was not commited)
+
+   when can the database / transaction processing system tell the client that 
+     a transaction has committed?
+   - when the commit record made it to disk.  
+       no, I don't know how you can be sure it made it.  probably that the database manages
+       the disk and doesn't waste time with the OS file system and buffer cache stuff.
+    
+   when can you release the locks associated with a transaction?
+   - simple answer: after the commit - ensures no cascading aborts.
+   - slightly more nuanced: read locks can be released just before the commit.
+      doesn't matter whether your transaction commits or aborts, the next transaction 
+      will still see the same data, so wouldn't have a cascading abort.
+
+  which transaction do you kill if there appears to be a deadlock.
+    imagine detecting deadlock simply by some transactions taking seconds
+    kill the guy with the least stuff in the log.
+
+**  Serializability: the effects of a set of transactions are equivalent
+    to *some* sequential ordering of those transactions.
+      individual transactions don't see the effects of 
+       partially-completed transactions.
+
+  T1: read(balance) balance+=1 write(balance)
+  T2: read(balance) balance*=2 write(balance)
+  
+  Serializability means the outcomes (assuming T1 and T2 commit) are either:
+    balance = (balance + 1) * 2
+    balance = (balance * 2) + 1
+   not:
+    balance = balance + 1
+    balance = balance * 2
+
+*** Two-phase locking is the mechanism for ensuring that this happens.
+   phase 1: growing phase
+   phase 2: shrinking phase
+  Once you release a lock, can't acquire any more.
+
+  T1: lock(balance reading) read lock(balance writing) write commit
+  T2: lock(balance reading) read lock(balance writing) write commit
+
+  not two phase locking! :
+  T1: lock(bal read) read lock(bal wri) write release(bal)
+      lock(bal2 read) read lock(bal2 wri) write release(bal2)
+      commit
+
+  two phase ensures that the transaction holds all the locks
+   for all the stuff it needs to read at the same time or
+   write at the same time.
+
+  In the two-phase protocol, if we're doing transactions
+   (we have the ability to "abort" the transaction)
+   where does the commit go?   
+    options are: before releases, after releases.
+
+   if commit after release, and you don't commit, any
+    transaction that read stuff you had written also has to
+    abort.
+
+   if commit before release, no one else can see the results of the 
+    stuff you wrote, so no cascading aborts.
+
+
+* Deadlock.
+
+  Intuitive definition: two or more processes that prevent
+    each other from making progress.
+
+  Book-like: processes that need resources and could
+     ordinarily on the machine get all they need are
+     prevented by process that holds resources (and vice
+     versa)
+
+  Also: processes in a set are all waiting for an event that
+     can only be caused by another process in the set.
+
+**  Four conditions of deadlock:
+  have all four, deadlock is possible.
+  avoid/break any one: no more deadlock.
+
+  1. MUTUAL EXCLUSION - can't share the resource.  if you
+     could share the resource, no one would have to wait.
+
+  2. HOLD AND WAIT - when you're acquiring a set of resources,
+     you get one (some) at a time; collect them incrementally,
+     holding onto the ones you started with.
+
+  3. NO PREEMPTION - can't take. can't steal. can't reclaim.
+
+  4. CIRCULAR WAIT - there is a cycle in the waits-for graph.
+     (waits-for graph means that there's an edge from a node (process)
+      that waits for the incident node (process))
+
+     imagine if you ran popen("bc", "r+");
+     if you screwed up, you could call read() when you shoudn't have...
+      i.e., when bc is waiting for another line from you...
+     you're waiting on bc, bc's waiting on you.... deadlock.
+    
+**  Three schemes for dealing:
+
+  1. deadlock prevention - break one of those conditions
+
+  2. deadlock avoidance - know enough about the processes
+     that you don't enter an unsafe state.
+
+  3. deadlock detection - if you know it happened, kill off
+     one of the processes involved
+
+***  Deadlock prevention:
+****    how do we break "hold and wait"  
+    limit one resource.  (while blocked, not inhibiting others)
+       (unlikely to be practical).  one big lock option.
+       two big lock option.  the lock that represents at
+       least everything that your thread needs.  if another
+       thread needs one of those things, then the lock must
+       cover all of his needs too.  (at least all the needs
+       that are concurrent)
+    acquire all resources at the same time.  (or a
+       virtualization of that... i.e., grab grab grab if
+       failed on anything, let go of all, repeat until it
+       worked.).  once you have the resources, you can run
+       to completion (and give up those resources.)
+
+****    how do we break "no preemption"
+
+    - preemption: a process waiting on a resource can have
+      its resources stolen by another.
+
+      - doesn't make sense for a printer
+      - might make sense for memory pages or disk blocks.
+ 
+****    how to break circular wait:
+
+    - construct a total order on the resources, and acquire
+       them in this order.
+
+       "protocol" that the applications agree to.
+
+       anybody violates this protocol, you get circular wait
+       again, you get deadlock.
+
+ generally cannot avoid mutual exclusion, since that's why
+ we're here in the first place, but reader/writer locks might 
+ permit additional concurrency enough to prevent deadlock.
+
+*** Deadlock Avoidance:
+  Ensure that at all times, every process has a way out
+   (might mean waiting for some other process to finish)
+
+  Ensure the system is always in a "safe" state.
+    safe is defined as every thread can acquire all the
+     resources it will ever need, and then finish.
+    there's some order where the existing threads that
+     have all the resources they have (and may need) 
+     can finish.
+  Downside: won't necessarily be able to use all the resources.
+   - not living on the edge.
+  Other downside: each process / app needs to tell the kernel what it might 
+     possibly want.  
+
+  r1 and r2 are distinct, unique resources.
+    (not like a memory page, not something you have many of)
+  P1:  get(r1)  ....  get(r2)  release(r2) release(r1)
+  P2:  get(r2)  ....  get(r1)  release(r1) release(r2)
+ 
+  P1: Maximum required resources: r1 r2
+  P2: Maximum required resources: r1 r2
+
+  if P2 holds r2 and P1 holds r1 -> unsafe state.
+  if P1 holds r1 -> we won't allow P2 to get r2.
+
+  P1 and P2 must tell the OS in advance of their possible needs.
+
+  Doesn't require a cycle in the waits for graph.
+   (so may be conservative)
+
+  almost like eliminating hold and wait except:
+   you still hold stuff.
+   you still wait.  potentially even for something that the system has "available"
+     but which would put the system into an "unsafe" state.
+
+Why is this better than a global lock:
+  P1:  get(r0) ... get(r1)  ....  get(r2)  release(r2) release(r1)
+  P2:  get(r3) ... get(r2)  ....  get(r1)  release(r1) release(r2)
+ 
+  P1: Maximum required resources: r1 r2 r0
+  P2: Maximum required resources: r1 r2 r3
+
+  P1:  (1) get(r0) ... (4/5)get(r1)  release(r0) release(r1)
+  P2:  (2) get(r1) ... (3)get(r2)  release(r2) release(r1)
+  P3:  (4/5)get(r2) ... (6)get(r0)  release(r0) release(r2)
+ 
+  P1: Maximum required resources: r0 r1
+  P2: Maximum required resources: r1 r2
+  P3: Maximum required resources: r2 r0
+
+  P2:  get(r1) ... if(r1==12) get(r2)  release(r2) release(r1)
+
+ After (1) and (2): still safe, because we could run P2, then P1, then P3.
+
+*** Banker's Algorithm.
+ A set of vectors.
+ 
+ Available[resource_id] <= number of resources of each type that 
+                           are available in the system. 
+ Max[process_id][resource_id] <= number of resources potentially 
+                                 required by the process.
+ Allocation[process_id][resource_id] <= how many resources we've given out.
+ Need = Max - Allocation <= how many more we could potentally want.
+
+ Is-Safe-State subroutine: 
+
+  Work = Available
+  forall process_id: Finish_able[process_id] = false 
+ loop:
+  find i such that !Finish_able[i] && Need[i] <= Work
+  if i exists then
+    Work += Allocation[i]
+    Finish_able[i] = true; // hooray
+    goto loop;
+  else
+    if Finish_able[i] for all i then 
+      safe! // success! 
+      return true
+    else 
+      not safe.
+      return false
+    end
+  end
+
+ 
+ Resource-Request:
+   a) ensure that Request[process] + Allocation[process] <= Max[process]
+         the process lied to us.   it's asking for more than it said it needed.
+         not clear what you do: could just adjust max (if that remains safe).
+   b) ensure the Request[process] <= Available
+         otherwise clearly can't satisfy the request: wait until that resource is released.
+   c) pretend we allocated the resource to the process.
+         if still a safe state, really allocate.
+         if not, wait. (until resources are reclaimed or a process ends)
+
+ If a process was allowed to run forever
+  +) no deadlock
+  -) starvation for the process waiting for the highlander to die.
+
+** END 10/1
+** BEGIN 10/6
+Recall:
+  deadlock prevention - break one of the four conditions
+  deadlock avoidance - stay in a safe state.
+
+*** Deadlock detection and recovery.
+  How can we tell the difference between 
+   - deadlock
+   - waiting for a long time
+
+  Every once in a while, see if processes are stuck.
+
+  Compute the dependencies between processes s.t. any cycle
+   exposes the set of processes that are deadlocked.
+
+   - waits-for graph (nodes represent processes, edges
+      represent a process waiting for another)
+
+   Once you find the cycle:  two options:
+    a) kill a process.
+         for example, if two processes are both waiting for the other
+         to write something, killing one will cause the other to read 
+         EOF.  maybe this will result in something good happening.
+    b) confiscate resources.  (may not be feasible.)
+       The semantics of semaphores in geekos mean you could
+       acquire a semaphore, and die holding that semaphore.
+         - have to believe that the killed process will give up
+           whatever resources others are waiting on.
+         - probably can't build a waits-for graph here.
+            (might be able to if there were only mutexes, and the
+             mutex had an owner, and when the owner died the 
+             mutex would be auto-released.)
+
+**  Deadlock summary 
+
+  If all our processes are waiting (deadlocked), we can do
+   all kinds of stuff to figure out what the issue is.
+ 
+  For users, we would like to prevent all deadlocks - when
+   your mail program and address book program and .mac
+   synchronization get together to do nothing useful.
+ 
+  For operating system textbook writers starting from the
+    history of multiprogramming jobs, the goal is keeping
+    utilization high.
+
+  Which process(es) do you kill?    (expect to still run that process again)
+   - indiscriminately
+   - maybe youngest.  may cost the least to restart that
+     guy.
+   - maybe oldest.  still hasn't finished.  what's he
+     waiting for.
+  
+  What do you do if there's more than one cycle?
+   
+* Memory Management:
+
+*** stall: when your process tries to read memory, it might
+    have to wait many cycles.  goal: avoid this waiting.
+
+*** protection: keep user programs from accessing kernel
+    memory, other process' memory, or even their own memory
+    in bad ways. (e.g., writing to the text (code) segment)
+
+*** address space: the set of memory addresses a process can
+    play with
+
+    the illusion we seek: run several processes at a time,
+    each with the illusion of its own physical memory.
+
+*** addresses: phy, logical.
+
+**** logical (in a segment) -> linear (after adding offset)
+   -> physical (after paging)
+
+**** ref
+   64-ia-32-architectures-software-developer-vol-3a-part-1-manual.pdf
+   fig 3-1 on page 3-2
+
+*** fragmentation
+   Fragmentation: (review)
+     internal fragmentation: some piece allocated, larger than needed, 
+        rest is wasted.   in a file system, you'll have blocks, some
+        parts of blocks will go unused.
+     external fragmentation: unusable space that results from allocations
+        and deallocations of different sizes.  space between allocations
+        may be too small or too separated for a contiguous allocation.
+   "fragmentation" in your disk utility is a combination of things
+     where the "defragmenter" also tries to make files contiguous.
+ 
+
+** Basic strawman scheme (but used): swap
+
+   to run more than one program: could swap them in and out
+   in their entirety.
+
+** Less basic: overlays
+
+  Similar scheme: "overlays" (from those happy DOS and CPM
+  days)
+
+  some program too large itself to fit in memory, you
+  could actually swap out pieces of its code.
+
+  one overlay for initialization routines, another for
+  shutdown, another for ordinary use.  different overlays
+  for different "drivers"
+
+ Instead, (as memories become larger than programs) we'd
+  like to have more processes running at a time.
+
+** contiguous allocation (geekos default)
+   load up an app at some address and tell the application
+    that it has some size of memory that starts at address
+    0.
+
+   behind the scenes, we'll have a "base" register to add to
+    the application's memory address.  and we'll have a
+    "limit" register to ensure that the addresses don't
+    exceed the space for that app.
+    
+   Picture: 
+    partition the physical memory into:
+     
+    [ kernel |   app 1     |  app 2  |  app 3               |      |  app4 |        ]
+             ^ app1's base :         ^ app3's base          :      ^ app4's base
+                           ^ app1's limit+app1's base       :
+                                                            ^ app3's base+limit
+
+    what would the base and limit registers look like to the kernel?
+     0, inf
+
+    note: "contiguous allocation" totally applies.  the
+       region of memory used by app1 is contiguous.
+
+    where does a new process go?
+      first fit - lowest numbered space where the app would fit.
+      best fit  - smallest space where the app would fit
+      worst fit - largest space (where the app better fit)
+
+    can you share memory?
+
+      you could share the top of an app with the bottom of
+      another, but way sketchy
+
+      you could have two threads share memory.
+
+      if you have multiple segments for different parts of
+        the code, (more than one base+limit register pair to
+        play with) ... but current compilers don't support this.
+
+    fragmentation as applied to contiguous allocation:
+
+      internal fragmentation:
+        your segment is made too large, unused inside.
+
+      external fragmentation:
+        spaces between allocations, wasted because they're
+        too small for processes.
+
+      compaction: taking and moving application address
+        spaces without them knowing.  (change the base
+        register)
+
+**  Segmentation (in the context of memory)
+    Memory divided into regions based on function
+      "code" segment,
+      data segment
+      stack segment
+      ...
+
+    the location in memory being referenced is a combination 
+      of segment and offset within the segment
+
+    GeekOS segmentation in the vm project:
+      uses the hardware to put user code at 0x8000 0000
+      is the base address of the data segment different? no.
+      is the base address of the stack segment different? no.
+
+* Paging and Virtual Memory.
+ Hardware support.
+ Schemes for organizing the page table.
+ Schemes for deciding which pages to evict.
+ How to share pages and libraries.
+ 
+**  Paging (definition)
+    Separating the linear addresses in a process's address space
+     from the physical addresses that are split into pages.
+    linear address:  split that into a page number p and an offset d
+      p of 20 bits 
+      d of 12 bits  -> 4 KB page.
+    some sort of table will map p in the linear address to a
+      physical page.  we translate p, we can get the physical 
+      address.
+
+
+** Difference between paging and segmentation:
+
+ paging - fixed size "pages" that fit into page frames and
+  we expect these pages to not be consecutive.  shuffle the
+  little ~4K pages in memory.
+
+ segmentation - variable size, contiguous regions of memory
+  in which the entire text, or data, or stack or heap, or
+  library, will be stored.
+
+** Why use paging?
+
+ - limit external fragmentation - unused space between
+   segments because all pages could be used.
+
+ - our application can be larger than phy memory on the machine
+    - don't need stuff deep in the stack all the time
+    - initialization code
+    - exception or error handling code
+    - extra features in libraries
+    - very large data sets that you might iterate through.
+    - could create a large, mostly unused buffer.  
+        #define BUFSIZE 128000000  // if up against RLIMIT_DATA, might fail to load.
+        char buffer[BUFSIZE]; // in the data segment.. or on the stack.
+        read(s, buffer, BUFSIZE); // 
+
+ - our group of applications can then be larger (we can run
+     many apps at the very same time)
+
+    - we don't have to swap out whole segments, 
+
+    - the entire "working set" (actively used code and data)
+      of all the apps is present at once.
+
+** Process address space:
+  Code  || Data  || Heap -> || emptiness || <- Stack
+
+  emptiness likely replaced with shared libraries and other
+  shared segments
+
+
+** We need a Page Table
+  per-process linear page number -> physical page (frame) number
+   - likely one page table per process.
+ 
+  *If* we imagine a 32-bit machine (processor with 32-bit
+   addressing), with 4K pages
+
+   page number (which page)             20 bits in the page number.
+   page offset (how far into the page)  12 bits in the offset.
+    How many entries in the page table?
+     2^20.  2^10 * 2^10 =~ 1000000 entries.
+
+  hierarchical page table.
+    1024-entry page directory that references
+    1024-entry page tables
+
+  we store more bits in the page table:
+
+    valid or invalid ("present")
+     - if valid, logical page is in memory,
+       the processor is happy, can proceed.
+
+     - if not valid, logical page is perhaps not allocated,
+       is perhaps on disk.
+
+    referenced bit ("accessed") - used by the "clock"
+      algorithm to determine which pages to evict (could
+      imagine more general bits for any page replacement
+      algorithm)
+
+    dirty bit - the page has been written (modified) and
+      would need to be written to disk before being
+      discarded.
+
+    copy-on-write bit - (might be called "private" in linux parlance) 
+
+      if you fork() - flag the pages copy on write so that
+      any (potentially unlikely) writes would allocate
+      another page and anything shared would remain shared:
+      no footprint to the new process.
+
+    protection bits - e.g., execution but not writing,
+      absolutely nothing unless all-powerful kernel
+      (supervisor) mode.
+
+    pin / lock - if you gave a device a reference to user
+      memory, you don't want to page it out until that
+      device has read/written the memory.  (kernel might not
+      page itself, might set aside a region that wouldn't be
+      paged...)  but that user memory might need the bit set
+      to be kept in memory by the pager.
+     
+  On every memory reference (ld, jmp, st), the processor
+    generates a linear address that the MMU has to
+    translate into a physical address.
+
+  Rather than lookup in the entire table every time, we
+    employ a fully-associative cache called the TLB
+    "translation lookaside buffer" that includes very few
+    entries - 64-ish?
+
+  The intent is to avoid the page table lookup for
+  frequently accessed pages.
+
+    ideally, the page that has the code you're running would
+    have an entry in the TLB.
+
+  The TLB can be managed by the hardware or by the kernel.   
+
+    - (RISC-ish) a tlb miss can generate a trap that then
+       requires the kernel to perform the page table lookup,
+       decide which TLB entry to evict, insert the new TLB
+       entry.
+
+    - if the processor knows what the page table looks like
+       (has a page table base register, at least), it can
+       perform the lookup itself and insert an entry into
+       the TLB.
+
+-- END 10/6
+-- BEGIN 10/8
+ ** Exam 10/13; Content up to but not including paging.
+     (you should understand segmentation at the depth
+     required for project 1.)
+ 
+How do we store page tables?
+ = memory gets bigger.  applications/processes get bigger. 
+
+ - can use a straightforward, linear page table scheme
+   with a million entries.
+
+ - have a "tree" "hierarchical" can potentially have page
+   frames of varying size.
+
+
+** hierarchical paging
+     Not-hierarchical paging would consume 4MB just for the 
+      page table, even if the process used almost none of it.
+    
+     Split page number (p) into page table number, followed by 
+      a page number in that table.
+
+     Intel PAE - skipping the inner page table so that you can
+       make a 4MB "page".   
+
+** hashed page tables
+  - pretty straightforward, take your address, hash it
+    into an open(?) (with a linked list) table.
+
+
+** inverted page table.
+  - when the addressible space (64-bit) is much larger than
+    the usable memory, too large for realizing the page
+    table.
+
+  - only store in the usable page table the virtual address
+    corresponding to the physical address.
+
+    - and the associated pid for the virtual.
+
+  - linear search might be required.
+
+  - if you want to access a page that's
+     in memory, the search over all the memory pages might
+     not be so bad.  if you need a page that's in disk,
+     you're screwed (10ms)... so what's the point of
+     avoiding linear search?
+
+  - sharing is not obviously supported, because the physical
+    address stores a single binding to the logical in a
+    process.
+
+ == blocking pipe exercise, midterm.
+
+* Relocating libraries.
+     Why?
+       save space:  in memory.
+       save space:  on disk.
+       reusing code...  (could do that with a static library as well)
+       ability to update (bugfix) a shared library
+         - but MUST retain the same interfaces. 
+   
+     Where they go.
+       cat /proc/[pid]/maps 
+       cat /proc/[pid]/smaps 
+
+     How do shared libraries get "loaded" (dynamic part of linking)
+      how does the executable know where the functions are in the 
+      library so that the calls happen correctly?
+
+ 
+** Position-independent code: absolute object code without addresses.
+  for the code to be really sharable between processes, it has to be 
+  loaded simultaneously at two different addresses.  or, you have to 
+  decide globally at which address any library will be loaded, so that 
+  their allocation doesn't overlap.
+  1) relative addressing is used as often as possible.
+      there are a few types of jump instruction: 
+        jump relative
+        jump literal address
+        jump register (indirect address)
+      the goal is to eliminate jumping to literal addresses (that would have to be filled in by the linker) and 
+        instead use as many relative jumps as possiblew. 
+  2) indirect addressing through a linkage table is used for globals or long branches
+      globals aren't shared across processes, you know.
+  3) procedure linkage table and data linkage tables are kept in the process's data segment.
+  
+* Demand Paging
+     Goal:
+       Illusion of more phy memory than actually present.
+       Large, unused address spaces, buffers, libraries, etc.
+       Potential to load from disk only what is accessed.
+
+     Prehistory: overlays
+       Process itself would start, would load initialization routines,
+       run them, and then replace that code in memory with the code
+       it would use later.
+       - no mmu for doing the paging.
+       - 8" floppy would have been backing store.
+
+     Memory mapping
+       "load" stuff into memory by altering the page table to have
+        a reference to disk.  
+       when that page is accessed, "present" bit won't be set,  
+        page fault will occur, the OS will then have to load the 
+        page into memory.   (page table can have an entry)
+
+     Actors:
+       The "pager" brings pages in from disk, marks them present in 
+          the page table.
+       The "swap daemon" which takes dirty pages and writes them 
+          to page file.
+       "pdflush" in linux (TODO(find generic name) takes dirty pages 
+          and writes them to the file system.  (for mapped files).
+          (similar to swap daemon)
+
+* The states of a physical page
+  unallocated, zeroed page
+  allocated to a process, mapped into that process's page table.
+    not dirty
+    not referenced for epsilon time (once the instruction is restarted) 
+  
+  not referenced, not dirty -> referenced, not dirty:
+    process read from that page.  (processor does this for us)
+
+  referenced, dirty -> not referenced, dirty: 
+  referenced, not dirty -> not referenced, not dirty: 
+    the algorithms we'll talk about will use the bit to tell which
+     pages are important and which ones are not, will likely clear
+     the bit after in some (algorithm dependent) way remembering 
+     that it was set.
+    the kernel's job.
+    
+  not referenced, dirty -> referenced, dirty:
+    read or a write to the page.(processor does this for us)
+
+  not referenced, not dirty -> not referenced, dirty: 
+    no way. (a write is a reference)
+  
+  not referenced, not dirty -> referenced, dirty: 
+      referenced, not dirty -> referenced, dirty: 
+    how?  processor sees the write.
+
+  referenced, dirty -> referenced, not dirty:
+    take the page, write it to disk
+      copy the page, clear the dirty bit, schedule the write
+    might just get dirty again.
+      could be a good idea to clean if the page is part of 
+      a memory mapped file.
+    
+  not referenced, dirty -> not referenced, not dirty:
+    take the page, write it to disk
+      copy the page, clear the dirty bit, schedule the write
+    preferable.
+      more likely to provide a not-referenced, not dirty clean
+      page ready to be reclaimed.
+  
+  not referenced, not dirty -> reclaimed.
+     part two of the page replacement algorithm.    
+
+  reclaimed -> zeroed (and ready to use)
+     this is a task...  
+
+  processor takes care of these bits:
+    dirty bit, set on a write:
+       clean / dirty bits in the page table.
+    referenced bit, set on read or write: 
+       referenced / not referenced bits in the page table.
+
+
+** Page Fault: 
+
+  - the MMU traps to the OS when the app accesses a page
+    marked invalid in the page table.
+
+    -- might be invalid because it's totally invalid (NULL
+       or garbage pointer)
+
+    -- might be invalid because it hasn't been paged in.
+
+ The Pager:
+
+  - task: bring pages in from disk, mark them valid.  (tell
+    the kernel to restart the instruction that trapped)
+
+-- END 10/8
+-- BEGIN 10/15
+
+* Page Replacement 
+ - how do we find the "free" frames for when we want to page in something after a fault?
+ - Mechanism (getting it done), Policy (which one to pick)
+   a) write dirty frame out; when written (or the disk buffer has the data copied), mark it clean.
+   b) find a clean, unused page, mark it invalid
+   c) find an invalid page frame, claim it.
+
+** Policy 1: FIFO
+  That which has been in the vm longest, can be removed.
+  - if you believe the stuff that was just brought in will be used for a while and then isn't useful.
+  - expect important stuff to come back in again.  
+  - works less poorly if you don't actually evict the page (pretend to page something out, 
+    but keep it if referenced before replaced)
+
+  Sequence: 
+    1 2 3 4 1 2 3 4 1 2 3 4
+ 
+  if we imagine having only three pages, fifo would yield:
+   
+    1 1 1 4 4 4 3 3 3 2 2 2                
+      2 2 2 1 1 1 4 4 4 3 3        
+        3 3 3 2 2 2 1 1 1 4                                             
+
+  okay, let's have a better sequence.
+
+   1 2 1 3 4 1 3 1 2 
+
+  .1 1 1 1.4 4 4 4 4
+    .2 2 2 2.1 1 1 1 
+        .3 3 3 3 3.2
+           ^ so this could have gone better by evicting 2, the least recently used.
+  1) lru seems more likely to limit issues
+  2) see the loop? easy to implement fifo with a little pointer incremented each time.
+
+
+
+**  FIFO: 
+ - first page in is the first page out, regardless of whether accessed.
+
+ - pathological case for FIFO page replacement: sometimes a
+    smaller phy memory can see *fewer* faults.
+
+   - not the case that a larger phy memory would hold
+       everything a smaller physical memory would ->
+       Belady's anomaly.
+   
+    1 2 3 4 1 2 5 1 2 3 4 5  <- sequence of accesses
+
+   .1 1 1 1 1 1.5 5 5 5.4
+4pg: .2 2 2 2 2 2.1 1 1 1.5         10 faults.
+       .3 3 3 3 3 3.2
+         .4 4 4 4 4 4.3
+
+    1 2 3 4 1 2 5 1 2 3 4 5  <- sequence of accesses
+   .1 1 1.4    .5 5       5
+3pg  .2 2 2.1   1 1  .3              9 faults.
+       .3 3 3.2 2 2 2  .4  
+ 
+** Policy #2 The fictional OPT:
+ - make the correct decision based on looking into the future.
+   - obviously, you don't actually know the future.
+ - evict what won't be used for the longest time into the future.
+   - apparently this local strategy works out to minimize the number of faults.
+  
+ another 3 page example.
+  1 2 1 3 4 1 2 1 
+ .1   1     1   1
+   .2         2
+       .3.4
+
+**  Policy 3: LRU
+  - replace what has not recently been used
+    - possible crappy implementation: stamp a counter on each page when accessed.
+      - whenever you want to find the least recently used page, find the oldest stamp.
+    - could instead maintain a sorted list (doubly-linked queue)
+      - on an access, pull from the middle of the queue, move to the top
+      - to reclaim a page, pull from the bottom.
+      - ~6 pointer fixups to do...
+  - is a type of "stack" algorithm -> no Belady's anomaly
+     - the pages in a memory of size S are a subset of those in size S+1.
+
+**  Policy 3.9: FIFO + Second Chance
+  - reference bit for every page, set on every access
+  - if, on the FIFO replacement, R is set, put the page on the back of the queue
+     as if it were new ("reset the time")
+  - else (R is not set: the page is both unused and old), evict!
+
+** Policy 3.99: Random.
+    - there are processors/operating systems that just kick stuff out
+      at random.
+
+**  Policy 4: Clock
+  - like FIFO & second chance, but:
+    - have the potential to have more than one "hand"
+    - canonical implementation
+  - still use the reference bit,
+  - imagine a "hand" of the clock advancing through each of the pages, 
+    - clearing reference bits and evicting unused pages.
+  - enhancement: figure out how to deal with dirty pages.
+    - maybe another hand that writes out not-recently referenced (r=0) dirty (dirty=1) pages.
+
+  - mostly a "visually cooler" version of fifo + second chance,
+       (subject to revision)
+
+**  Policy 5 & 6: LFU, MFU
+  - Least Frequently Used, Most Frequently Used.
+
+  - least frequently used - maybe the stuff used a lot isn't
+    useful any more, new stuff is.
+
+  - most frequently used - more obvious: it's important.
+    - would need to "age" these counters.
+
+  - scheme: periodically shift off the reference bit 
+    - for each page, we have the reference bit.
+
+    - at time 0+eps, scan all the pages, and copy the
+          reference bit into a per-page value.  and reset
+          all the reference bits.
+
+      - at 2 epsilon, add (?) the reference bit? -> 2, 1, 0
+           shift the reference bit on  -> 3, 2, 1, 0
+              (not immediately clear how to compare "2" and "1"
+           might be the count of bits.
+      --- this is not likely to be the actual scheme used... 
+
+    - use this function of the history of reference bits to
+      estimate most and least frequently used.
+
+** Policy 7: Working Set
+
+  - establish some \tau (t) interval over which any accesses
+    are likely to be in the "working set" for the process.
+
+  - for each page with referenced bit set,
+    - note the current "time" 
+    - anything without the bit, we don't update the time. 
+
+  - we then have a list, for all the pages, roughly when
+    they were last accessed.
+
+  - to replace: 
+
+     any page with timestamp < now - \tao is not in the
+     working set, can be evicted.  can choose at random.
+
+  - what if no such page? 
+     doesn't matter, evict at random.
+     (would be cool to beg the kernel for a bigger allocation or swap yourself out...)
+
+**  Policy 8: Working Set + Clock (was used in linux)
+  - instead of choosing at random, you advance a clock hand.
+    - if the clock loops around, pick a clean page to evict
+  - can schedule the write of a dirty page
+
+ tlb shoot down! pew pew.
+
+** In-class exercise Oct 15.
+
+FIFO: 13
+1 2 3 4 5 2 4 3 2 1 4 6 3 2 3 5 1 3 2 2 7 2 2 1 6
+1       5                 2         - -   - -   6
+  2       -     - 1           5    
+    3         -       6         1             -
+      4     -       -   3   -     -     7
+      
+OPT: 10
+1 2 3 4 5 2 4 3 2 1 4 6 3 2 3 5 1 3 2 2 7 2 2 1 6
+1       5         1             -             -
+  2       -     -         -         - -   - - 
+    3         -         -   -     -     7
+      4     -       - 6       5                 6
+
+LRU: 13
+1 2 3 4 5 2 4 3 2 1 4 6 3 2 3 5 1 3 2 2 7 2 2 1 6
+1       5         1       2         - -   - -   
+  2       -     -       3   -     -             6
+    3         -       6         1             -
+      4     -       -         5         7
+
+
+FIFO/SC: 14
+1 2 3 4 5 2 4 3 2 1 4 6 3 2 3 5 1 3 2 2 7 2 2 1 6
+1       5         x     3   ^ x   ^     x 2 ^   
+  2     x ^     ^ 1       x   5         x       6
+    3   x     ^   x   6   x     1       x     ^
+      4 x   ^     x ^   x 2         ^ ^ 7       
+
+(note: FIFO/SC corrected 10/22 to omit x's in the last
+column)
+
+END 10/15 (skipped working set-based policies.)
+
+* Page Buffering:
+
+  all of the page reclamation stuff was about taking valid
+   pages and marking them invalid.
+
+  other steps: 
+   1) taking dirty pages, and making them clean.
+   2) taking pages that have data, and zeroing them. 
+  if we want to give a new page to a process, it better be full of zeroes.
+
+ - if the paging device is idle, the paging daemon can just
+    start cleaning pages (cleaning pages means writing them
+    to disk).
+
+ - can also keep track of evicted (but not yet zeroed or
+    claimed) pages so that, if accessed again, it can be
+    brought back, no disk access required.
+
+   - we've already done all the work to choose this page to
+      evict, but we haven't quite finished it off.  can
+      still be rescued.
+
+** when should the kernel clean a dirty page?
+  a) need the memory.  
+      might lots of read-only pages out there...  e.g., code.
+     make up a threshold of the number/fraction of dirty pages
+      we're willing to tolerate.
+  b) the page is a good candidate for eviction (because it hasn't been 
+      referenced)   
+  c) (potentially) the disk has some free time.
+
+  goal of this is to make the page fault handler speedy.
+
+* Quick mincore() example 
+
+ mincore() runs of zeroes - 
+
+  - (a) we'll only fault on hitting the first page of the
+        run of pages not in core -> gives us time to load up
+        the other pages.
+
+  - (b) we choose a contiguous region because it will be
+        easier to write out to disk (hey, disk, here's just
+        one 50K region, instead of here's 12 4K regions) --
+        it's possible / likely that some of these
+        contiguous-in-logical-address-space regions are also
+        contiguous in phy space.
+
+  - (c) it could be easier to load them back in.
+
+
+* Page replacement exercise recap 
+    lru easy when everything visible.
+
+    fifo second chance painful to simulate and useless for a
+    random-enough access pattern.
+
+    fifo has Belady's anomaly (fifo second chance probably as well.)
+
+* Page allocation.
+  Problem: which process gets how many pages?
+
+  Potential problems that page allocation should solve:
+  - Perhaps we'd be better off swapping a process out 
+    entirely to avoid thrashing.
+  - Each process that intends to make any progress will
+    need at least some minimum number of pages in core 
+    to execute some instructions.  (can't have more 
+    processes than pages)
+  - A process of unclear or low priority could interfere
+    with a high priority process by consuming too much 
+    physical memory.  (a sort of priority inversion)
+  
+    Let's assume my process needs another page:
+
+  Minimum allocation per (running) process:
+   depends on the architecture (instruction set)
+     canonical example of extra-complicated is VAX
+   you need the page(s) that the instruction is in.
+   you need any pages referenced by the instruction
+     with indirect addressing, you could have to load a pointer 
+       from memory and dereference that pointer. 
+   you could have memory-to-memory instructions.
+ 
+**  Strawman: 
+   - completely global allocation, no view of a process being entitled to 
+     any pages.
+   - steal pages from wherever.
+   - advantage: don't have to be too smart - clock operates over all pages.
+   - disadvantage: active process gets to touch its pages, 
+        runnable/ready process isn't touching, so even its recenty used 
+        pages.
+     - running process greedy with memory can effectively "evict" a runnable 
+        process from memory if it wants to.
+      linuxlab likely unhappy.
+   - (to me) unfair - the little process with a little memory footprint
+      that doesn't use the cpu much (but maybe often) will have to wait to get
+      his pages brought back in...
+     - what happens while a process waits for its page to come back in?
+         -> another process gets run.
+    
+**  Fixed:
+   - everybody gets the same number of physical pages.  everybody gets k.
+
+     - advantage: "fair"
+
+     - disadvantage: you've "allocated" pages to processes
+          that don't need them (assumes that different
+          processes need different amounts of PHY memory)
+
+   - could look at it as uniform, equal, since I think it
+      does adjust to varying number of processes.
+  
+**  Proportional:
+
+   - allocate pages based on total memory allocation (how
+       much logical address space it has mapped)
+
+   - advantage of giving lots of physical pages to processes
+     that want lots of memory
+
+     - coarse: that address space isn't necessarily used.
+   
+**  Priority:
+
+   - if my process has a higher priority than your process:
+     - your pages become mine.
+
+**  Global vs. Local
+
+   - whether, when looking for a page, the kernel can choose
+      a page that doesn't belong to the currently running
+      process.
+
+   - review strawman, a bit.  
+
+** Allocation to avoid thrashing (apply the working set model)  
+   - associated with each page is a "time" of last access, 
+     - any page accessed less than \tao ago is in the working set
+     - any other page is not.
+   - a question is how \tao is maintained
+     - virtual timer is resilient to the process getting starved by the cpu scheduler. 
+     - real clock might not.
+   - if our process ran through all the pages looking for one outside the working set
+       and found none,
+     - take an invalid page from another process.
+     - what if none? 
+       - steal?
+       - eat it (page out one of our own)
+       - swap something out (maybe yourself)  yield plus give up your memory.
+
+--- 
+* Memory-mapped files.
+  The backing store for a region of memory can be:
+   1. the source of all zeroes
+   2. swap space (a block device whose sole purpose is to hold pages)
+   3. a file on the file system (also mmap a device?)
+  
+  Not the same as memory-mapped I/O.  whole different thing.
+   (explanation here)
+
+END 10/20
+
+PLAN: Frank and Neil traveling next week.  Jeff
+Hollingsworth to cover scheduling Tuesday, Ian to review/fix
+scheduling Thursday.
+
+* Memory allocation in the kernel.
+   Constraint:
+
+     we'd like to be able to manage large contiguous regions
+     to hand off to devices.
+
+     we may not be able to page stuff out. (strong may --
+     very likely that we can't page stuff out)
+   
+**   Buddy system:
+     start with a large contiguous block.
+     interface: as malloc, free.
+     implementation: 
+       store a table of lists of free blocks of sizes equal to powers of two.
+         1M    
+         512K  < > 
+         256K  < > 
+         ...
+         4K    < > < >
+         2K    
+         1K
+         512
+     allocate: 
+      a) look for the size in the table, if found done.
+      b) else break a larger-sized allocation.
+     free:
+      a) put your block back.
+      b) if your block has its buddy, can reconstruct the larger allocation.
+     
+**   Slab allocation
+     in kernel, we have many structures - open files, mutexes, pcbs, 
+        network connections, skbuff.
+     could imagine a malloc and free
+     instead: allocates space for an array of these small, homogeneous objects.
+       limit the waste due to internal fragmentation by packing objects. 
+     advantage is that we can allocate quickly because there's a region of 
+       memory sitting there waiting.
+     relatively little of the benefit of the slab allocator comes from being able 
+       to re-use allocation.
+
+     most of the benefit of the slab allocator comes from
+     re-using initialized objects.
+
+    interface: 
+      allocate ( kmem_cache * )  ; the cache knows the size and type of the object
+      free ( kmem_cache *, the object )
+      kmem_cache *cache_create( char *name, size_t size_of_object, 
+           int alignment, 
+           void (*constructor)(void *, size_t),
+           void (*destructor)(void *, size_t));
+    back end: 
+      caches can be full,  
+        partial,  - should try to fill or to empty the partial ones
+        empty - could release this cache to the system if there's mem pressure
+     
+**  other kernel memory allocation issues:
+   can you allocate memory inside an interrupt handler?  (sure if it was a trap/system call)
+   it can be the case that your request for memory inside the kernel 
+    *could* be satisfied if only you could clear some buffers out to disk
+    or rearrange memory in some other way.
+   but to do that would require waiting or giving up locks,
+    which you might not be able to do. 
+   in linux kernel: there are two flags to kmalloc 
+     - one if you'd rather fail than wait.   (you're holding locks)   (GFP_ATOMIC)
+     - if you'd rather wait than fail.  (you're working for the application)  (GFP_KERNEL)
+ 
+   in kernel land, stacks are very small: should avoid allocation on the stack.
+
+end of kernel memory / high performance memory allocation
+
+* prepaging
+  when swapping a process in, try to bring in all the pages it is likely to need
+   and not wait for it to demand page everything in.
+
+* page sizing:
+  why have small pages?
+    less internal fragmentation, more compact use of memory
+    might be able to find an unused smaller page more easily than an unused 
+      large page (fine grained)
+    smaller than ridiculously large pages would transfer off disk more quickly
+      (time to seek the disk head vs transfer time)
+  
+  why have large pages?
+    fewer page faults -> you bring other good stuff in,
+     especially for sequential access.
+    fewer levels in the page table -> smaller, and fewer access on a tlb miss
+    tlb reach -> you can have more of memory accessed without a tlb miss.
+    
+* How does all of this alter writing applications?
+
+  locality - when your application touches memory, we don't want to jump around.
+    - i'm curious if you had a very large two dimensional
+       array, what's the performance difference between
+       iterating the right way and the wrong way.
+
+    - i'm curious if you could write a generational garbage
+       collector that would reduce paging.
+
+    - i'm curious how, when writing a web proxy cache, the
+       cache makes a decision about what stays in memory and
+       what if anything goes on disk.
+
+  If there's lots of space, might your pages be written to disk anyway?
+    When might this be bad?  
+      your application happens to have a plaintext password in memory, 
+        unencrypted private keys.
+      anything you don't want the FBI to know about....
+      if the box crashes and somebody takes it.
+  How much swap could you possibly need?
+    4GB times max processes
+     - minus the code, the pages are straight off disk anyway.  
+    almost certainly too much; you'd rather start killing processes
+     much earlier.
+
+* The OOM killer.
+
+   WindowsXP expands page file.
+
+   Mac seems to adds 1GB to /var/vm/swapfile 
+
+   Linux uses a static sized swap partition
+     CW if the swap partition is large enough, the machine will fall down paging 
+      before it runs out of memory.
+
+     But likely not that large (or processes don't have such
+      a large overall working set)
+
+  Attempt to pick a victim and kill it.
+
+  Individual processes have resource limits; if a process
+     exceeds its limit, it's killed. (or malloc fails)
+
+  How does it choose the victim?
+     unlikely to be a good idea: ask the user.
+
+  Kill them:
+
+   - large memory footprint
+
+   - low priority (niced)
+
+   - new processes (not wasting a lot of work... they might be to blame)
+
+   - may be a good idea: those with large VSZ to RSS ratio
+     (lots of stale pages) -> leaky program
+
+   - lots of children (fork bomb.)
+
+  Don't kill them:
+
+   - small memory footprint
+
+   - important supervisor / root processes on the assumption
+     that they're essential.
+
+   - the process that locks your screen (i.e., xlock)
+       (parameterize the oom killer with user feedback.)
+
+   - high priority processes (?)
+  
+   - processes with children (might better OOM-kill the children first)
+
+
+* FILE SYSTEMS.
+
+**  what's a file?
+   general: a named array of bytes, persistently stored, likely with
+     some metadata / access restrictions / type.
+
+   to the file system: blocks on a disk, metadata about the file
+
+     metadata stored by the filesystem: size, atime (access
+       time, when last read) ctime (creation time), mtime
+       (modification time), mode (permissions), ownership,
+       group ownership.
+     metadata that can be stored by the OS in the filesystem
+       "icons", .DS_Store, thumbs.db (cache of the images in 
+       a directory to make your windows explorer look pretty).
+ 
+   to an application: 
+      an object that has a name and supports the file operations:
+        read, write...
+    
+**  what's a directory?
+    collection of files and directories
+
+    Could be a file with a special format. <- (nearly) everything that we want to 
+                                    have persistently stored will be a file.
+     - list of other files (and directories)
+
+
+**  what can you do with a file (operations):
+    delete/unlink
+    exec() it 
+    stat() - query for the metadata 
+    create()
+    open and close()
+    read and write() 
+    seek() - advance or return to a specific position for the next read/write 
+       seek + write provides append()
+
+    clone/copy (usually implemented as open of the new thing, read the old one, write the new one).
+    link - create another name for the same data.
+
+**  what can you do with a directory:
+    opendir - given the name of a directory, provide a file handle for reading each dirent 
+       (dirent = directory entry combining name and some metadata)
+    readdir -
+    closedir -
+    seekdir
+    no writedir (you must use open or link to add entries.)
+    
+      this is the code in opendir(2) for determining if a file with name "name" 
+      is in the current directory ".".
+
+           struct dirent *dp;
+           size_t len = strlen(name);
+           DIR *dirp = opendir(".");
+           while ((dp = readdir(dirp)) != NULL)
+                   if (dp->d_namlen == len && !strcmp(dp->d_name, name)) {
+                           (void)closedir(dirp);
+                           return FOUND;
+                   }
+           (void)closedir(dirp);
+           return NOT_FOUND;
+
+       
+*  What's a disk?
+   Physical device: cylinders, tracks, sectors, heads,
+     circular platters that spin, bringing a sector under the heads
+       5400 rpm on laptops, 7200 on cheap desktops, 15000 on servers.
+       11ms for the entire cylinder to run under a head at 5400rpm
+       ~3.7ms at 15000rpm
+     heads attached to arms that seek to a cylinder
+       seek performance varies by distance to travel
+  
+   What does this mean for performance:
+     sequential access (if you arrange adjacent blocks on the same cylinder)
+        is fast
+       leads to my favorite thing: the log structured file system.
+     
+     stuff that will be fastest to access is in the middle:
+       part of the "fast file system" (second unix file system)
+       moved the inodes to the middle.    less distance to seek.
+ 
+   What does the structure of the physical disk mean for caching?
+     May want to just read the whole cylinder into memory, expecting
+      the application to want to read sequentially.
+
+     magnetic disk
+       many platter.
+     mechanical head
+     head is fixed while the disk spins.
+       cylinder, 
+     cylinders carved into sectors
+   Ultimately we want the interface of blocks.
+     Once upon a time it was tremendously important to know the geometry of the disk.
+      when disk read/write scheduling could yield performance.
+     Now we have the block interface we want
+      - locality still matters.
+
+   Solid state - interface of blocks without the latency of mechanical movement.
+     blocks wear out, so there's logic on the drive to avoid writing in exactly 
+      the same place, flash translation layer.
+
+
+End Oct 22.
+
+Oct 27 - short-term processor scheduling guest lecture.
+Oct 29 - short-term processor scheduling .
+
+Nov 3
+
+--
+* CPU scheduling.
+  
+** Goals in CPU scheduling:
+ 1) utilization should be high. (not while(1) inside your thread high utilization.. 
+      want useful work)
+ 2) illusion of responsiveness
+
+    - short jobs should finish quickly: anything that's
+     already going to take a long time doesn't need to be
+     prioritized.
+
+    - partial results should arrive quickly.
+    * try to make this analytical, provide some formula about minimizing 
+      waiting time or wall time over excution time, 
+    - interactive jobs (those that use IO more than CPU should get what little CPU
+      they ask for, perhaps delaying jobs that just use CPU all the time.)
+
+ 3) fairness, no starvation 
+
+   metrics you could consider.
+      turnaround time: execution plus waiting time.
+      waiting time:    time spent waiting for the processor.
+      response time:   time to first results.
+
+** Schemes from the early days of batch scheduling:
+
+ FCFS: first come, first served.  
+
+  if you have no preemption, and don't know how long any
+  task will take, FCFS rules.
+
+      what's wrong with it?
+        if the first thing that arrives takes much longer than
+        the rest, then the interactive jobs (those with short 
+        run times) have to spend much more time waiting...  
+        relative to their run times, they're slowed down a lot.
+  
+ SJF: shortest job first.
+
+  suddenly we know how long things will take: can choose the
+    shortest job: short jobs don't wait for long jobs, long
+    jobs wait for short jobs.
+
+    assumes magic.  "an oracle"
+      - or users to promise an upper bound (for batch scheduling)
+      - or a prediction of future job length (for scheduling time slices)
+  
+    advantage: 
+       reduce the amount of time short jobs have to wait for
+       longer jobs to get out of the way.
+
+    long jobs might starve, even though they're also important.
+      long job might not be that much larger.
+
+  if you have preemption, variant of SJF:
+   SRTF -  shortest remaining time first 
+    - choose the one with the least time remaining in the job.
+
+Mode shift:
+
+ - leave the massive scientific job on a batch queue space.
+
+ - enter the multiprogramming world of alternating CPU- and I/O-bursts. 
+
+   - trick will be to estimate the CPU-burst length of each
+     process individually.
+
+   - essentially, schedule those with short bursts in
+     preference to those with longer bursts.
+
+Scheme for prediction
+
+ - in accounting at a context switch, update the estimator
+   in the PCB (or the thread context) with how long that cpu
+   burst was.
+
+ - estimator tends to be an adaptive gradient / exponential average 
+   - ability to track an "average" without holding many samples.
+
+ - Prediction_t  = alpha * Measurement_t + (1-alpha) * Prediction_{t-1}
+
+** Multilevel feedback queue
+
+ reasonable balance between ease of explanation and usefulness.
+  - i.e., there are better scheduling schemes, but this is pretty good.
+
+     quantum: the time slice allocated to a process.  between 1ms 
+        and 100ms.  may even vary by process (permitted by this 
+        scheme).
+
+     a few queues, 
+        processes that have short bursts of computation in the "top"
+        queue. These are implicitly prioritized because they don't use
+        their quantum.
+
+     if a process exhausts its quantum, it descends to the
+        next level.  not as highly priority.  at this lower
+        level, may increase the length of the quantum, but
+        the queue will be serviced less often.
+
+     if a process doesn't exhaust its quantum before
+        blocking on IO, wakes up at a level above.
+
+   effect:  IO bound processes have better response time.
+            CPU bound processes keep the processor busy.
+
+ queues further down may be given longer quanta than the higher queues
+  - why? these are the cpu-intensive processes.
+  - not going to run unless all the other queues are empty.
+  - to give that process as much of forward progress as possible.
+    - you'd rather give him 0.5 seconds once every 5 seconds than
+      0.1 every 1.  
+    - he'd rather have that allocation.
+  - if we get down to switching between 3 processes in the lowest queue, 
+    there's nothing to be gained by switching between them often, and 
+    a little performance to lose, might as well let them run
+
+thrashing is the inability to get much forward progress done
+because you're switching too much.
+
+**   current geekos scheduler:
+
+    single queue.  round robin-ish.  except for Find_Best,
+      which picks the highest priority process always.
+      (except that I don't think priority is used.)
+
+
+  how might you alter a scheduler of a server system (as
+    opposed to a desktop system)?
+     on a server, response time is less important.
+                  turnaround time a little less important.
+              throughput is more important.
+                  (might involve reducing response time... 
+                    but perhaps not.)
+                  
+  how might you alter the scheduler on grace?
+     cs412013 processes first.
+     schedule student processes at somewhat lower priority 
+       (protect the system)
+     deadline-aware scheduling: cs412 over cs417 depending
+       on week.
+     
+* multiprocessor scheduling issues. 
+
+  scheduling for more than one processor
+    at least two main issues.
+
+     1) you'd like to have them all working - want to keep
+        the utilization up.  (load balancing)
+
+     2) you'd like to keep processes running on the
+        processor where they get the best performance.
+        (processor affinity)
+
+    these are or can be at odds.
+
+**  processor affinity.
+
+    possible to have a mix of processes that will work best
+     if a pair of them are pinned to the same processor.
+     pair of processes with a bidirectional pipe, client and
+     server.  if you're able to recognize this relationship,
+     can take advantage of it.  might limit your load
+     balance.
+   
+    large multiprocessor machines. (16-64 processors, SGI)
+     - individual memories associated with each processor
+     - ability to migrate processes and memory pages to other processors 
+       - but this consumes the ridiculously expensive and constrained backplane.
+     - NUMA (non-uniform memory access)
+
+  now a problem for everyone (not so much with NUMA)
+
+    - Simultaneous Multithreading (SMT) aka Intel Hyperthreading 
+
+      - superscalar processor can maintain more than one
+         thread context at a time, issue instructions from
+         these thread contexts *simultaneously*
+
+      - trying to address the problem that while running just one thread, 
+         you might waste a lot of time in memory stalls.  
+         - memory stall: 
+            ld a word from memory that is not in cache, it
+            takes 60ns to pull from DRAM.  in that time,
+            what will the processor do?  "nothing" or
+            "speculate"
+         - covering up memory latency 
+
+      - if you have instructions from another thread loaded
+        into the processor,
+         - that thread can use the functional units of the proc. 
+
+    - kinda looks like a multiprocessor (in that there are
+        extra sets of registers, one for each simultaneously
+        active context); but it doesn't have a copy of each
+        functional unit for each thread.
+
+ ** "gang scheduling" or "co-scheduling"
+
+    - cooperating threads on multiple processors might best
+    be scheduled at the same time so that they can
+    communicate; significantly reduce overall completion
+    time and reduce idle waiting.
+
+** "real" schedulers.
+   we described multi-level feedback queue.
+   If you were writing a scheduler for a production operating system, what do you need?
+    - could benefit from knowing whether the machine will be a desktop or a server system:
+      - why? 
+         * desktop machine should be more interactive: goal
+             is response time.
+         * server machine's goal: throughput. might mean
+             longer quanta. (maybe?: possibly penalizing
+             cpu-bound jobs less.)
+
+    - scalability matters: for a production operating
+        system, you'd like to be able to handle thousands of
+        processes.  this means that any complicated O(n)
+        scheduling algorithm would suck.
+
+         * example: Linux had an O(1) scheduler.
+           (so-called, maybe even true.).
+
+            - each time the scheduler ran, it had some constant work to do.
+
+    - applications: 
+        might have very important applications: window server 
+          for which "fairness" might be bad.
+        might want to prioritize based on appliation importance.
+        might have applications with specific requirements: a little cpu very often.
+          media players.
+    - users:
+        may want to express their idea of priority of different processes.
+          running using "nice"  
+
+  Spend some time understanding what might be fig 5.11 (solaris 
+    current priority -> ( priority if you expire, priority if you sleep, quantum length)
+
+
+  Open question #1:  In this discussion "processes", "threads", "tasks", "jobs", 
+    but not "user".   If you were to run 100 processes on grace/glue/linuxlab, you would likely
+    get 100x the CPU of any other user.   Fair?
+
+     * RLIMIT_NOPROC <- kernel enforced limit on the number of processes you can run.
+         -- every user should run up to that limit to fight fire with fire.
+         -- (please don't)
+     * I think there's a scheme for traversing the set of priorities that involves
+         dropping your (and child's) priority on fork to sort of fix this... a bit.
+
+  Open question #2:  What if a non-interactive process has heavy I/O requirements?
+    (many concurrent reads and writes from disk)
+     how can you read more than one block from the disk at the same time?
+      - non-blocking I/O.
+      - reading a large buffer at a time .
+
+     interactive process with meager i/o requirements (read my conf file) would get stuck
+      behind the non-interactive guy.
+
+     unless somehow the cpu priority worked it's way into the i/o scheduler.
+
+-- 
+
+
+END Nov 3
+-- 
+BEGIN Nov 5 
+
+Design your own file system.  Strawman:
+
+  ( 8.3 name, perm bits, size, 127 blocks )*
+
+What's missing here?
+
+
+ File sizes are variable, long tailed.
+   most files are small, most bytes are in large files.
+   could claim a continuation file.  (CP/M-like)
+ List a directory will take many block reads.
+   could move the names elsewhere.
+ Might want multiple links (names for the same data).
+   identifier for a file shouldn't be a name.  
+ Deleted files.
+   want to be able to find the deleted quickly.
+ Old disks want more scattering.
+ Might need to store other things on the device.
+ Might want memorable file names, non-roman characters
+
+** Things we have to put on the disk
+
+     boot block. <- whatever information is required to tell
+       the bios/cpu what to load
+
+     partition table <- take a large disk and carve it up
+       into separate file systems.
+
+     superblock!
+         number of blocks, the size of those blocks, etc.
+     directories
+     file control structures (inodes)
+     the blocks of the files.
+      
+ 
+**   Things the kernel must have in memory to operate on files.
+     partitions on the disk
+     file systems that are mounted and where they go.
+     open file table
+       list of all the files that are open, including position (offset)
+       (you might have the same "file" in the open file table twice)
+     per-process file table.
+       file descriptor -> entry in the open file table.
+
+
+   Metadata stored in an inode:
+     owner, group 
+     permissions  (read
+     ctime (creation time)
+     mtime (modification)
+     atime (access)
+     size 
+     direct, indirect, doubly-indirect blocks
+     not actually the file name.... you couldn't have hard links if so.
+     not actually in an inode, but you could store type information
+        (typically filename extension, first bytes of the file, resource fork) 
+
+The evolution of file system implementations.
+  review: file systems.  operations over file systems
+    unix file systems separate data (blocks) from metadata (inodes). 
+
+ 
+  what's the difference between a hard disk circa 1980 and a hard disk 2014?
+    capacity now huge.
+    physically much smaller.
+      spin faster. 
+        less time waiting for the bits to arrive under the head
+        less time waiting for the requested bits to pass under the head.
+      move the head faster.
+        fazter seek.
+    access time is faster, but still limited by physical stuff.
+
+  cache on a disk drive.
+    ask for block i. 
+    once you get block i.
+    ask for block i+1.
+    ->  ideal would be to have a cache of the cylinder being read so that 
+        you don't have to wait for the platter to make a complete revolution
+        before getting block i+1
+    ->  alternate is to use knowledge about the disk to lay out the  blocks 
+        so that the next one hasn't passed under the head when you're likely to 
+        ask for it.
+
+  file system usage conventional wisdom
+    - most files are small.   
+    - most files are short-lived.  
+        clearly files in /tmp, .o 
+        file that gets overwritten or replaced as you edit (esp. if you don't save)
+    - most bytes in large files.  
+       TODO: find counterexample metaphor just to make this seem not entirely intuitive.
+
+** how to allocate space on a block device for a file.
+   goal: have blocks that are in the same file in the same place.
+   
+*** strawman: contiguous allocation
+    - store in the file header (inode) where the file starts, and how long it is.
+    - good: simple random access.
+    - good: sequential access should be fast.
+    - bad: might not even fit (not have available contiguous blocks)   
+           external fragmentation: can't use some space because bits too
+          small to be usable are stuck between allocations.
+          internal fragmentation unchanged: still have blocks that won't
+             be fully used.
+    - bad: might not be able to append; if the file grows there might be 
+           no place for it.
+
+***   slightly more real: linked allocation
+    - store in the file header a pointer to the first block.
+    - block is conceptually "linked" to the next block in the file.
+    - good: we can grow files.
+    - bad: random access is terrible because you have to traverse the list.
+           (and the list is on disk with a pointer in every block)
+    - bad: terribly unreliable...  if you lose a block, the rest of the file is 
+           gone too. :(
+    - good: the blocks that are "free" can be in a file too.  
+           except you don't want to do this... why?
+           there's no easy way to identify contiguous free blocks.
+             there's no easy way to layout a file in contiguous blocks.
+    - maybe: could insert an integer number of blocks in the middle without
+           wrecking everything.
+
+*** FAT: file allocation table.
+   take linked but collapse all the pointers into the FAT.
+  good: linked list free block thing (if we want to, which we don't)
+  good: sequential access can be fast.
+  good: random access can be fast IF the FAT is cached.
+  bad: ? doesn't resist failure well?
+  bad: ? FAT doesn't always fit?
+
+*** Indexed allocation:
+  filename maps to an array of pointers to blocks.
+  good: all of the block numbers associated with a file are in one place.
+  bad: you have to decide the max size of a file, and it will be small.
+
+*** Multilevel indexed allocation:
+  the last few pointers to blocks don't point to data blocks,
+   instead point to blocks full of pointers to blocks.
+   instead point to blocks full of blocks full of pointers to blocks.
+  good: small files are well handled, in the inode, 
+  good: large files are still handled mostly sort of well.
+  bad: random access over large files might not be so good.
+     don't have the indirect blocks in cache.
+
+** Early unix file system
+ allocate the outer cylinder to inodes.  one big array of inodes.
+ inode number is an index into this array.
+ directory is a list of (name, inode number) pairs that is otherwise a file.
+
+ good: directory scheme is simple; straightforward version of 
+       multilevel allocation.
+ bad: unhappiness in large directories. (linear search)
+ bad: separating the data from the metadata.
+    if we want to look through a directory, many long seek.
+ bad: I've decided how many files I can store. (array of inodes)
+
+** Fast File System
+*** Key piece: cylinder groups: inodes and blocks located near each other.
+ try to keep inodes referring to blocks and inodes in the cylinder group. 
+   (why can't you just put inodes wherever you want) 
+ allocates data blocks first within the same cylinder group
+   then adjacent, 
+     then anywhere...
+
+***  Also: ability to store fragments.   
+    You've setup a large block size.  -> internal fragmentation.
+    Take a block, break it up into, say, four fragments, 
+      store the last fragment(s) of a file in this block.
+
+(more buffer cache overview... how to keep track of fre blocks on fat.)
+
+End Nov 10
+  
+** EXT2
+  https://www.kernel.org/doc/Documentation/filesystems/ext2.txt
+
+ structures on disk:
+  inode: mode, owner, size, timestamps, 12 direct blocks, indirect, 
+         double indirect, triple indirect.
+  superblock: magic: EF53, version, mount count, block size, number of 
+         free blocks, free inodes, first inode (as opposed to our GFS2 
+         convention of 1)
+  group descriptor: block and inode bitmaps.
+         for each of the block groups (renamed version of cylinder groups)
+ feature: 
+  preallocation:
+   imagine appending to two files into the same directory at the same time.
+     (syslog, and messages both in /var/log)
+   how would you expect to see blocks allocatd?  the naive scheme for file A and file 
+     B  would be:
+
+    AABB________
+    AABBA_______
+    AABBAB______
+    AABBABA_____
+    AABBABAB____
+    AABBABABABAB
+
+   instead: 
+    AABB________
+    AABBA...____
+    AABBA...B...
+    AABBAA..BB..
+    AABBAAA.BBB.
+    AABBAAAABBBB
+
+ * block group descriptor list follows the superblock.
+   * in-use inodes as a bitmap, (not a file)
+   * in-use blocks as a bitmap, (not a file) but one
+     in-use-blocks bitmap per block-group
+
+         
+** NTFS
+  Master File Table: 1-4KB, may include the entire file.
+  Directory is a B+-trees.  (B+-tree has all the data in the leaves.)
+    Can load a block at a time (the expensive part)
+    Treat searching through the block as free.
+  To refer to blocks of data on disk, NTFS uses "extents"
+    extent: <offset x is at block b, with k blocks> -- no extra disk seeks for indirect blocks
+       when walking sequentially through a file.
+    could construct sparse files.  (can still do this in other filesystems, but seems nicer here)
+  Can still have indirect-block-like lists of extents.
+
+
+** How we track free space on the disk?
+
+  In GFS2,GFS3 and some actual file systems, we'll store
+    this information in a file.
+
+  That info stored as a bitmap.  (not as a list)
+
+  Why prefer a bitmap over a list of free blocks?  can find
+  the contiguous ranges of free-ness.
+
+* The Buffer Cache.
+  Between the kernel supporting read() and write() functions
+   and the block device that is the disk is the buffer
+   cache.
+
+  Like all caches, we have fast memory, slow disk, and an
+   expectation of locality.
+
+  will take requests of the form: "give me block #n", "mark
+    this block as dirty", "release this block"
+  
+  behind the scenes, the buffer cache request will sleep
+    your process waiting for the block to be retrieved.
+
+  behind the scenes, the buffer cache will have its dirty
+    blocks written back to disk.  exactly where they came
+    from.  (role of updated as in "update""d"-- for some
+    operating systems there's a daemon process in charge of
+    making sure dirty blocks are written back.)
+  
+  Short-lived files might not leave the buffer cache.  (not
+    a will not leave... not a will never write to disk for
+    any of the writes required to create a file.)
+
+  Yes, inodes are in the buffer cache. 
+  Remember to mark things dirty.
+
+  GeekOS implementation stores the buffers in a linked list,
+    moves recently-used buffers to the front.
+ 
+But how to support mmap().
+
+  traditional scheme: is to have a page cache that lives on
+    top of the buffer cache.  allows you to map a buffer
+    into user space (requires a copy)
+
+  modern scheme: a unified buffer cache which combines the
+    page cache and the buffer cache.
+
+  for the interested: 
+
+https://www.usenix.org/legacy/publications/library/proceedings/usenix2000/freenix/full_papers/silvers/silvers.pdf
+
+
+Log structured file system
+  insights: 
+  * access time for a disk is going to remain high.
+  * throughput increases (assuming you don't have to seek)  bit density, rpm.
+      disk will start to look like tape.
+  * memory on a machine kept increasing -> lots of read cache.  
+      don't have to read anymore.
+    write for durability.
+
+  - let's write our file system as if it is a log.
+    bundle our writes (the blocks, the inodes) into contiguous segments (~1MB) 
+    at full disk throughput rate.
+   
+  - We can update the inode so that the new location of an old block 
+    is current (in the new segment).
+
+  - First problem: where is my inode?
+
+     - wrong approach: if we let the number change, we would
+       have to write the directories that reference that
+       inode (might be able to make this work, but not the
+       scheme that two really smart guys came up with.
+       mendel rosenblum, john ousterhout.  (fun flamewar if
+       you search for ousterhout and lfs implementation))
+
+     - ifile.  mapping from inode number to block on disk that 
+       stores the inode.  
+
+     - the ifile has an inode.
+
+     - store the location of the last ifile inode in the superblock.
+        close to a checkpoint.
+
+   - Second problem: we will fill up disk this way.
+      
+     - There is a seguse file which is the file that tracks
+       which segments are free.
+
+     - (a) we have to ensure that there's some place to start replaying the log from
+        making it possible to GC segments "before" that point in the log.
+     - (b) take partially-filled segments, and rewrite their data into new segments.
+        we take this old data and make a segment full of old data.
+        ideal we will not have to clean this segment, because the data blocks seem
+        useful and are not short-lived.
+     
+     - "the cleaner"
+       - is one place where LFS's get screwed up.
+     
+   - Third problem: what is the most frequently changing part of an inode.
+       atime.
+     - store the atime in the ifile.  or you could noatime.  
+        (which saves you from some power wastage on ordinary file systems.)
+
+
+Lecture 24:
+ 
+ have inconsistent states:
+  ufs/ffs
+  fat
+  ext2  
+   delete -> could crash in between writing something and something else
+        (list of free blocks, list of free inodes, directory)
+   move -> hopefully not lost, but then again, hopefully not linked twice incorrectly.
+  if we were to crash and reboot afterward, figure out what happened
+     -> recover a consistent state. 
+  
+ "don't" have inconsistent states:
+   log structured - the operation did or didn't go through : if the 
+      checksum on the segment is good, it worked.
+   journaling - write metadata (inodes and stuff) into the journal, log of our operations,
+      often not the actual data.
+
+
+END NOV 12.
+
+Unix file permissions
+
+
+Journaling
+
+  define: metadata to be inodes, directories, free block maps, free inode maps, 
+    any of the structures associated with maintaining the file system. anything
+    stored that is not data.
+
+  concern about consistency: 
+     inode reference count could be made to be wrong.
+     allocated block that is in the free list.
+     unallocated block that marked in use.
+     could have written the inode before writing the data (u r screwed)
+
+  Three flavors:  
+    writeback: write our metadata into the journal, data elsewhere, whenever. -> could lead to 
+      inconsistency  ==  1) it's not so bad (the inconsistencies aren't problematic, 
+       esp. if directories count as metadata;  2) we live on the edge for speed.
+    ordered:
+      same deal, except write the data first, metadata second, attempting to guarantee 
+         consistency.
+    data:
+      add data to the journal: not only do we store the operations, we also store the data.
+        not quite so bad, in the sense that your disk head doesn't have to move so much
+      but then you have to write the data again to get it out of the journal.
+
+   kernel.org/doc/Documentation/filesystems/ext4.txt
+   https://www.usenix.org/legacy/events/usenix05/tech/general/full_papers/prabhakaran/prabhakaran.pdf
+
+
+   "write ahead logging" - send the log record down first,
+     then update the inode in place.  presumably can tell
+     whether the inode was updated if recovering and the log
+     has the change but the inode does not.   then can decide 
+     whether the change actually happened.   (unless in ordered mode.)
+
+   http://www.eecs.harvard.edu/~margo/cs161/notes/ffs-journaling.pdf
+
+   can have a log that permits undo 
+     not entirely sure why
+   can have a log that permits redo
+     might not have to read (but probably have to for other reasons)
+   can have a log that permits both
+     ext3 (I think)
+
+
+I/O scheduling:
+   Possible to have more than one read or write request outstanding for the disk:
+    how?
+    - many processes - each process wants to read and write, 
+       cp example. - with 8 concurrent cp's: expect 8 read block and 8 write block requests 
+       at the same time.  (write likely not blocking.)
+    - crazy array of not blocking writes.
+    - nonblocking reads.  (prefetch)
+
+   Our interface to the disk is: give me this block, I will wait for you to provide it.
+
+   FIFO :
+     get a request, send it to the disk.  first in first out.
+     why does FIFO suck?
+   
+   SSTF SATF SPTF:  shortest seek/access/positioning time first
+      greedy 
+      starvation
+  
+   SCAN / Elevator / LOOK
+      favors the blocks in the middle (could use it.)
+ 
+   C-SCAN
+      SCAN, but only one direction, doesn't favor the middle (but I guess the extra long seek) 
+
+   Deadline scheduler
+     every request goes into two queues: 
+       1) to ordinary queue hoping that C-SCAN is enough 
+       2) to a read fifo or a write fifo.
+            if a read has been waiting of 0.5 seconds, just issue it.
+            if a write has been waiting for 5s, just issue it.
+               (not 5s from when the app decided to write, 5s from when the buffer
+                cache decided to write back) 
+
+    Anticipatory scheduler
+       look into the future, maybe don't move the arm.
+
+       predict whether you can reduce the amount of time to
+        seek by waiting for the app to make a request for a nearby
+        block.
+
+   CFQ 
+     one queue per process, time-slice access to the disk.  promotes fairness
+     at some likely cost to overall throughput.   likely pretty good for SSD use.
+        
+RAID
+  Disks are physical, they fail.
+    people put them in laptops and the laptops fall. 
+    friction eventually causes wear.
+    power surge / bad power.
+    air inside the disks -- disk head floats on top of the platter
+      if that air gets dust, that changes the airflow, and can make 
+      the head crash.   
+   could also totally lose data by the software/os/whatever breaking.
+       research by Dawson Engler on model checking filesystem implementations.
+       (question on whether journaling avoids the troubling bits.)
+   could also totally lose your data through various catastrophes too numerous
+    and horrible to list.  see fallout 3.
+
+ Disks are cheap.
+ Disks are slow.
+
+ redundant array (inexpensive, independent) disks.
+  
+  Levels 0, 1, 5 know.
+    others recognize.
+  
+  Level 0: stripe.
+    take more than one disk (e.g., 2); each block appears on only one disk.
+    useful for: throughput.  we can stream write twice as fast, stream read twice 
+      as fast.
+    not useful for redundancy.  probably more dangerous.
+  Level 1: mirror.
+    take more than one disk; each block written to all/both.
+    useful for: redundancy
+          also: parallel reads. don't need to read from both disks to make sure data is correct
+    level 2: error correcting codes  (7 disks)
+       write the actual data bitwise, then include error correcting codes on extra disks.
+         4 bits worth of data and 3 bits of error correcting info.
+      Error Detection:  parity bit. can know that there is an error, don't know where. 
+      Error Correction:  can tell where that error is.
+         2-dimensional parity. (neil's favorite)
+           1101-1
+           1011-0
+           0110-0
+           1001-0
+           ----- 
+           1001 0
+
+          2-bit error (detectable, but cannot be corrected) 
+           1101-1
+           1001-0
+           0110-0
+           1001-0
+           ----- 
+           1001 0
+             ^  ^
+    level 3: almost always, disks know when they break.
+        have the additional information of which bits are broken (the disk told us), 
+        can use the parity to reconstruct.
+    level 4: takes one disk, makes it the parity disk, but records block-level 
+        parity.  to write, read from the disk that stores the block we're about to 
+        overwrite, read from the parity disk the parity for the block we're overwriting
+        recompute the parity (flip any bit that we changed in overwriting the block)
+        then write both back.
+       hammers the parity disk.
+  Level 5: block level parity scattered on different disks.
+       rotate parity duty to each disk in the set.  
+         still need to read/modify/write, but the overload is shared.
+    level 6: a bit more redundancy, enough to handle two-disk failure.
+
+  improve write performance? level 0. (maybe 5, could write some stuff in parallel, 
+     but you'd have to read first... and that's not fun.)
+
+END Nov 24
+Dec 1 - assembly exercise
+Dec 3:
+
+ Very end of disks
+   1) there are some really cool graphs in the textbook
+      showing the technology trend of cheap, large
+      disks. cost per megabyte keeps dropping.
+   2) the story of the physically shrinking hard disk is
+      the first and possibly most compelling story in 
+      the "innovator's dilemma" (christensen).  briefly 
+      retold.
+
+
+NFS : network file system
+  we would like to share.
+  we would outsource our backup (disk fail) 
+  could read about it in the text... paraphrased from 
+
+  Based on a Sun implementation of *remote procedure call.*
+    main idea is that you want to provide a function-like interface
+    because it's easy to program.  don't expose the messages that are 
+    being sent, only functions that return.
+  Machine independent XDR (external data representation)
+    some machines use LSB, some MSB (and there are other differences); we 
+    have to agree on a representation for integers and such on the network.
+    (could have chosen alternate schemes like receiver-makes-right)
+  Server is stateless.
+    server does not care what files you have "open".  it only cares about the
+    reads and writes.  client can crash and restart and the server shall not 
+    care.
+
+  How does NFS know whether to allow a, say write.
+  
+  Might like the idea of your file server authenticating users and allowing those
+    users to do from their client anything they can do locally.
+    NFS does not do that.
+
+  NFS trusts the client to accurately report the user-id of
+    the requesting process and assumes that the uid is the
+    same on the server as on the client, and if the uid
+    could write the file on the server, the write is
+    allowed.
+
+  How does an nfs server prevent me from here at this desk
+    asking to write a file as root on
+    nfs-server.example.org?  
+   a) list of allowed machines is whitelisted at the server
+   b) pray that the network prevents other machines from 
+       impersonating a whitelisted machine.
+   recent implementations allow indirection to change uid 
+     at client to uid at server binding  
+
+  root_squash!  take any request on behalf of uid 0 (root, superuser)
+    and pretend it came from uid -1 (nobody, unpriv).
+
+  anecodotal: when the server goes away for a while, the client becomes
+    very unhappy.  
+     RPC layer tries to paper over message loss.  
+        common practice in networks is to wait longer each time.
+        if you sent a message and it didn't arrive, it might be because the network 
+         is overloaded.  if so, we should all send more slowly/less often.
+     why it matters:  while NFS was designed for local workgroups, wide area
+        network is expected to have more failures, delays, and losses.
+
+     (could try to fix some of these issues, but ... not really in the model
+      to expect failure in the filesystem-made-remote).
+       hard and soft options to nfs.
+
+  
+Lecture 26: Security day.
+ 
+  Salt, password file. uids.
+   
+
+  Classic stories.  Ken Thompson's hack.  Morris Worm.  Tenex hack.
+
+   quick review of keys first.
+  Burrows-Abadi-Needham Logic of authentication.
+
+  How does a unix system know that you're you?
+   0) it doesn't because you hacked it not to care.
+ * 1) password.
+   2) you have a key (ssh identity i.e., private key)
+   3) krb. kerberos.
+   4) secureid (calculator thingo) two-factor
+        two-factor means something you own and something you know.
+  In each case, there is some process in charge of performing this verification
+   and giving you a shell (process) running as you.
+     PCB has a uid.
+  How do we convert from happy user name to uid?
+    /etc/passwd file.
+
+  Once upon a time, the passwd file stored passwords.
+    Now, passwords typically stored in /etc/shadow
+    Difference being /etc/shadow readable only by root (the superuser that needs to be able 
+      to access the passwords.
+    Some idiot* decided to put lots of other info in /etc/passwd, which get used by other 
+      non-root processes.
+      (*not necessarily an idiot; I just mock the decision to add it into passwd.).
+  How did it store such passwords?
+    1) it would probably be a good idea not to store the passwords in plaintext.
+    2) store? SHA1(password): if you know the password, you can compute SHA1(password)
+          and know if you got it right.  
+        problem 1) the space of choices for passwords is kinda small. you can try them all.
+                    you might see the same password twice.
+                2) can pre-compute the f(password) here.  and store instead of the dictionary
+                    of all words to try, the list of all f(dictionary word) outputs.
+    3) store: {hash(password, salt), salt}  
+           salt perturbs the algorithm in 2^12...2^32(?) possible ways
+         in this scheme, if you compute hash(aardvark,12) it doesn't help 
+         you further down the list of passwords.
+           (must compute the hash(password, salt) for each (dictionary word, salt) 
+            combination)
+         
+  Tenex.  Before unix.  Thought to be very secure.
+    stored the password explicitly. (none of the hash stuff.) 
+    code for determining if you could get in was:
+
+    for(i=0;i<8;i++) {
+      if(entered_password[i] != real_password[i]) goto login_failed;
+    }
+  
+    gave access to the source code to a team of people.
+    give them a normal user account.
+
+    scheme: force a page fault to occur at each boundary between characters,
+    so that if the right character was chosen -> page fault.  wrong character, 
+      no page fault.
+     all you have to do to get a password, is choose the individual characters correctly.
+  
+  Thompson. "Reflections on Trusting Trust"   assert: turing award lecture.
+    first rootkit.
+
+    want to build a backdoor into any system.
+
+    obvious beginning: modify login.c 
+       if(!strcmp(user,"secretme")) {
+          login as root without checking the password. 
+       }
+
+    people might notice that this code is there and warn others.
+
+    step 2:
+      modify the compiler so that when it is compiling login.c, 
+      it inserts the code to let you login.
+   
+    problem: people might notice in the source to the compiler that
+      there's a piece of code there to insert the backdoor.
+
+    step 3:
+      compile the compiler so that it inserts the backdoor insertion 
+      code when compiling the compiler. 
+ 
+    step 4: 
+      obfuscate the back door.
+
+    small problem that your backdoor virus-spread code might break stuff 
+     and be detected or be too specific and die.
+
+    be very afraid.
+
+END Dec 3.
+
+Review of encryption keys.
+  public  / private key.
+    standard assumptions apply.
+
+  syntax: { message }_Key means message encrypted by key.
+
+  what happens if I encrypt something with your public key?
+    it can only be decrypted with your private key.
+    only you can read it.
+
+  what happens if you encrypt something with your private key?
+    a) everybody can read it.
+    b) everybody (can, if your public key is among relatively few possibilities) 
+         knows you wrote it.
+    
+  what if I encrypt something with your private key?
+     invalid question.
+
+  signature:
+    basic idea: message, { message }_Kprivate
+    better scheme: message, { hash(message) }_Kprivate
+
+  certificate:
+    scheme: Kotherguy_public, otherguy_info, { hash(Kotherguy_public, otherguy_info) }_Kprivate
+ 
+  IF neil and aaron share a secret S.
+
+  can make slightly faster signature behavior by
+ 
+     message, hash(message, S)
+
+Let's assume that we are evil.
+ During the run of a protocol (some alices and trying to talk to some bobs)
+  A1: brute force
+      try to break the crypto.
+       if you have a fast enough machine, 
+       people who configured the devices didn't use large enough keys.
+  A2: attack the message.
+      encrypted pieces of a message could be separated...  
+       you happened to see a message:
+     daniel should get extra credit 
+     qnavry fubhyq trg rkgen perqvg  
+
+     nathan should never get credit
+     anguna fubhyq arire trg perqvg
+
+     could substitute pieces of still-encrypted but known-meaning messages
+      to get something terribly wrong (but still looks good)..
+
+     this is why there's block chaining, so that the individual parts of
+     a message are tied together.
+
+  A3: attack the keys - using the dictionary.
+
+  A4: beat the protocol by replaying old messages.
+     - BAN to address.
+
+Needham and Schroeder came up with a protocol for
+authentication based on symmetric keys.  (1978)  It became popular,
+and then somebody found a hole.  Facing this shame, they
+set out to never let that happen again.
+
+Goal of an authentication protocol: 
+  A knows it's talking to B.
+  B knows it's talking to A.
+ optional:
+  A knows that B knows it's talking to A.
+  B knows that A knows it's talking to B.
+  
+mutual authentication.
+
+The protocol at issue:
+  A->S: A,B,N_a
+  S->A: {N_a, B, Kab, {Kab, A}_Kbs}_Kas
+  A->B: {Kab, A}_Kbs
+  B->A: {Nb}_Kab  ***
+  A->B: {Nb-1}_Kab
+
+Problem:
+E can, having sniffed all of these packets, 
+  crack Kab.  (long after everything's finished.)
+E can replay message 3. (just knows what it means, doesn't have 
+                         to synthesize it)
+Can then answer the Nb challenge thing.  B believes this is a good key,
+ B believes "alice" has been authenticated by S.
+
+
+ The people in charge would like me to remind you about course evaluations.
+
+ Plan: BAN, Lamport logical clocks, Byzantine, 2-phase-commit.  
+  Final review.  Done.
+
+ Enumerate assumptions:  
+   [A,B] believe S has jurisdiction over A<-K->B
+   A can generate a fresh Na, B a fresh Nb.
+   [A,S] believe A <-Kas-> S
+   [B,S] believe B <-Kbs-> S
+
+ Rules:
+  message meaning rule:  (X is a message)
+     A sees X 
+   if X is associated with a secret (e.g. Kab between A and B, 
+           encoded with B's private key)
+   that can convert into:
+     A believes B once said X
+
+  nonce verification rule:
+     A believes B once said X 
+   if A believes X is fresh.
+     A believes B believes X
+
+  jurisdiction rule
+    start from:
+     A believes B believes X
+    if we add:
+     B has jurisdiction over X
+    get:
+     A believes X
+ 
+  freshness is contagious:
+    if something is fresh in a message, all things are 
+      fresh in that message (the sender is assumed to 
+      believe the things it sends.)  "in the message" 
+      likely best defined to be protected/made an atomic 
+      message by encryption.
+        
+  A->S: A,B,N_a
+  S->A: {N_a, B, Kab, {Kab, A}_Kbs}_Kas
+      apply message meaning:
+     A believes S once said {N_a, A <-Kab-> B}
+      apply our freshness rule:
+     A believes S believes {A <-Kab-> B}
+      apply jursidiction
+     A believes {A <-Kab-> B}
+     
+  A->B: {Kab, A}_Kbs
+      apply message meaning:
+     B believes S once said {A <-Kab-> B}
+      we get no freshness.
+      
+  B->A: {Nb}_Kab  ***
+     B once said Nb
+     B once said {A <-Kab-> B}
+
+  A->B: {Nb-1}_Kab
+     get nowhere (B shouldn't believe A<-Kab->B, because he doesn't 
+        know that S believes it.)
+
+Kerberos:
+  A->S: A,B
+  S->A: {Ts, B, Kab, {Ts, Kab A}_Kbs}_Kas
+  A->B: {Ts, Kab A}_Kbs, {A, Ta}_Kab 
+  B->A: {Ta+1}_Kab 
+
+ Ts and Ta are timestamps.  Kerberos requires synchronized clocks.
+List assumptions:
+[A,B] believe S has jurisdiction over A<-Kab->B
+[A,B] believe Ts is fresh.
+[B] believes Ta is fresh.
+[A,S],[B,S] believe [AB]<-K[ab]s->S  (Kas and Kbs are good)
+
+  S->A: {Ts, B, Kab, {Ts, Kab A}_Kbs}_Kas
+   meaning: S once said ...
+   freshness: ... message is fresh.
+   nonce (Ts) verification: S believes ...
+   jurisdiction: A believes ...
+
+ S is the KDC, providing the TGT (ignore if you don't recognize the acronyms.)
+ 
+ not covered: Diffie-Hellman is neato; 
+
+Dec 11.
+
+Lamport clocks.
+==
+  - collections of machines working cooperatively to provide some service.
+    cluster of mail servers maybe.
+  - try to debug when you have many asynchronous processes.  create 'snapshots'
+    or an image of what every machine was doing at the same time.  rather 
+    impractical to get the obvious snapshot.  (collect all state at once from 
+    all machines.)
+  - key challenge in emulating a snapshot is that all machines have a different 
+     clock.
+  - choose instead a model of consistency, of ordering, that is less rigid:
+     causal ordering.  if A caused B, make sure that A "happened before" B.
+     otherwise, we don't care so much about the ordering.  
+
+  - Lamport scheme:
+     1. each message has a logical timestamp.  
+     2. if you send another message, increment the timestamp.
+     3. if you receive a message with a higher (or equal to your own) 
+         timestamp T, your new logical time is T+1.
+
+  - can presumably better understand the system's state by not having
+     any effects without causes.
+
+Byzantine Generals
+==
+  - two (not byzantine) generals problem: 
+     messengers can be caught and killed; only means of communication.
+     hard enough.
+  - byzantine generals:
+     byzantine generals don't play the protocol: 
+     imagine we have three armies with generals say to one general: lets attack!
+      and say to another: let's go home.
+  - byzantine failure model assumes that faulty components are (pretty much) 
+     arbitrarily faulty.  they don't just stop.
+  - typical scheme: make them sign their messages, catch them in a lie, have
+     alternate, redundant, likely-not-faulty spares.
+
+
+Two phase commit
+==
+ distributed database (pieces of the database are on different machines.)
+ want to construct an atomic transaction atop this database.
+  
+ can't just iteratively commit.
+
+ 1.  everybody "prepare": write the stuff to disk, write that you're "prepared", 
+      then respond.
+     now if a node fails, when it comes back, it has to investigate, by asking
+      all of the nodes involved in the transaction whether it did commit.
+  
+ 2.  everybody 'commit':
+     only if everybody is prepared.
+     as soon as any of the database servers writes "commit" to disk, it's committed.
+
+
+    
+=== 
+Review.
+
+1. exhaust test.
+2. give yourself a big enough disk.
+3. review outline on-line
+
+
+ 
+
+ 
+
+
+
+
+
+
+ 
+
+
+  
+ 
+     
+   
+
+Review
+ what is an operating system?
+ what illusions does the operating system provide to applications?
+ how do devices tell the processor there's something to do?
+ how does the processor get information from devices?
+ what's a pipe?  a named pipe?  a socket?
+ what's the difference between a system call and a library call?
+ 
+ what's a microkernel? 
+   what are the challenges with a microkernel? 
+   what are the advantages of a microkernel?
+ what's an interrupt?  how does it differ from a trap?
+   how do interrupts help with preemtive multitasking?
+ what's a real time system?  
+   what characterizes the apps in a real time system?
+   what characterizes the scheduling in a real time system?
+ what do embedded systems lack?  
+
+ what's a file?  a file descriptor?  a file system?
+   what is the interface of a file system?
+ 
+ what's a shell?  how does a shell start (not on geekos)?
+
+ what's a process?  contrast thread.  what does a process have?
+  what are its states?  what is stored in the PCB?  what's a pid?
+  what's a zombie?  how much state is needed by a zombie?  
+
+ where are page tables stored?  how does a context switch happen?
+   why not switch frequently? what's thrashing? what's a quantum?
+
+ what are short, medium, and long term scheduling?  what distinguishes
+   dispatcher from scheduler?  which processes live forever?  
+
+ what does "init" do?  what is a daemon?  how does a process become a 
+   daemon?
+
+ how is system() implemented?  pipe()?  how does a shell implement 
+   the | operator?  why separate processes by pipes not threads?
+   why use shared memory?  what is sigpipe?
+
+ user level threads.  what that means.  what process is
+  required to create a user level thread, and what
+  (arch-dependent) calls are involved in creating a new user
+  level thread.  distinguish from kernel thread.
+
+ thread pool.  what and why
+
+ cpu scheduler goals.
+  types: FCFS, SJF (SRTF), MLFQ.  adjusting quantum.  detecting i/o bound.  
+    what it means to block on i/o or give up the quantum.
+    is fairness good?
+
+ reentrant functions.  
+  don't hold state across invocations.
+
+ what does signal() do?  contrast kill().  alarm().
+
+ multiprocessor scheduling: affinity, load balancing.  SMT.  memory stalls.  
+
+ synchronization, race conditions, locks.  
+
+ reader/writer locks.  starvation for whom?
+
+ the critical section problem: four goals/criteria.
+ 
+ Peterson's solution.  Applicability.  Insight.  
+ Bakery algorithm.  metaphor. insight.  key mechanism.
+ 
+ test-and-set/TSL.  how to implement lock and unlock.
+ swap/xchg/swp.  how to implement lock and unlock.
+ why these primitives aren't enough. 
+
+ semaphores.  P/V proberen/verhogen wait/signal
+  how implemented (you know this well.)
+  implement producer/consumer bounded buffer.
+   what does the producer wait for?
+   what does the consumer wait for?
+  implement reader/writer locks.
+   who starves?
+
+ condition variables and monitors 
+  condition variable operations
+  motivation for monitors.
+  implementation of semaphores with condition variables and monitors.
+  implementation of monitors and condition variables with semaphores.
+  producer/consumer with monitors.
+  signal-and-(continue vs. wait)
+
+ dining philosophers
+  solution with condition variables.
+
+ transactions: 
+  ACID.  name each, what they mean, how they are ensured.
+  two-phase locking.  what it's for, how it works.  when locks can be released.
+  undo and redo logging.
+
+ deadlock:
+  four conditions.
+  prevention, avoidance, and detection.  mechansims for each.  incl. banker's alg.
+  how to decide which processes to kill
+  
+
+== end of pre-midterm content ==
+
+ memory management: stall, protection, address space.
+  overlays (old school)
+  contiguous allocation, limitations.
+  fragmentation: internal, external.
+  segmentation vs. paging.
+  process address space layout.
+  page table.  multilevel page table.  page directories.  page table bits.
+  TLB.  what it does.  why page size matters.
+  inverted page tables, hashed page tables. 
+  PAE.
+
+/*   position-independent code.  relative addressing, indirect addressing.
+  why have PIC? */
+ 
+ what's a page fault?  what's the task of the pager?
+ page replacement strategies: FIFO, OPT, LRU, Second chance, Clock, MFU, LFU, working set
+  contrast insight, goals, weaknesses.
+
+ page buffering, how to decide when to write dirty pages out.
+ page allocation, minimum pages required, global allocation, fairness, proportional, priority. 
+ memory mapped files.
+
+ kernel memory allocation: buddies and slabs.
+  three states of a slab.
+ prepaging: what it is, how it helps.  contrast medium-term scheduling.
+
+ OOM. 
+ 
+file systems: interfaces.  disk geometry, performance properties.  file metadata.
+ berkeley study conventional wisdom about files.
+ contiguous allocation, linked allocation, FAT, indexed allocation, multilevel indexed, 
+   early unix file system (very gfs2), fast file system and what made it faster. ext2.
+   NTFS and extents.  
+ understand a File Allocation Table.  
+ Free blocks bitmaps. why they're good.
+ preallocation.
+
+ the buffer cache.  contrast unified buffer cache, page cache.
+
+ the log structured file system: 
+  motivating insight(s).
+  implementation issues: cascading changes to update a block of data.
+  the ifile and storage of atime.  the cleaner. 
+
+======== 
+ journaling file systems.  insight.  writeback, ordered, data. redo/undo
+  distinction to log structured.
+
+
+i/o scheduling:  FIFO, SSTF/SATF/SPTF, SCAN/Elevator/LOOK, 
+  C-SCAN, deadline, anticipatory.
+  what each is good for.  what can go wrong.  
+    does it help to have deeper queues? what makes more than one block show up on the queue?
+
+RAID: levels 0, 1, 5. cost.
+ mirror, stripe, parity.
+
+NFS: RPC, XDR, statelessness.  access control (uid reporting, exports file)
+ operations.
+ rfc 1094.
+
+Security: Thompson, Tenex, /etc/passwd salt.  public/private keys, signatures, certificates.
+  block chaining importance.  authentication protocol.
+  BAN logic ops: nonce verification, freshness, message meaning, jurisdiction, 
+
+/* not covered 2015 
+Two-phase commit.
+Byzantine generals.
+Lamport logical clocks.
+*/
+
+
+=== 
+From the vocabulary: 
+ ignore little's law
+ ignore interrupt coalescing.
+ ignore device drriver. [sic]
+ 
+
+Review process -> daemon.
+
+ a) no attachment to a tty
+ b) background
+ 
+ if(fork() == 0) {
+    close(0);
+    close(1);
+    close(2);
+    /* do my stuff. */
+ } else {
+    exit();
+ }
+
+PAE: scheme for allowing your page directory to point to a 2MB superpage.
+   potential to use a hierarchical page table to support both large and small 
+   pages for that tastes great / less filling best of both worlds joy.
+
+slab allocation scheme:
+  construct homogenous arrays of kernel-required objects just so that we 
+   dont have to malloc/initialize/free/bzero them frequently.
+  slab allocator tries to maintain mostly-initialized objects for us to 
+   reuse.
+  if a slab is *partial*ly full, we'll try to use it.
+  if a slab is *empty*, we'll try to release it (if under memory pressure -- somebody 
+    else needs a slab.
+  if a slab is *full*, we're happy.  no fragmentation.  hooray.
+    if you need another object and all the caches/slabs are full.
+
+  advantages of the slab:
+    you can pack these things together. avoid fragmentation.
+    avoiding extra reinitialization saves (but unclear how much -- depends on lifetime,
+       difficulty in setting up the object).
+    
+
+implementing pipe.
+ 
+   remind yourself of popen  
+   
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+* Scheduler Simulation Assignment
+    
+  input file: something.script (show examples in a sec)
+  main.c: the simulator, expects to be linked with a file providing
+    Get_Next_Runnable <- finds the thread that you want executed next, 
+                         pulls it off the runnable/ready queue,
+                         and provides it to the caller.
+    Make_Runnable <- take either a new thread or one that is awakening, 
+                     and expect it to go into the ready queue somewhere.
+  output: 
+    1) if verbose, print the tid that executes over each clock tick.
+    2) summary of each thread 
+    3) overall summary statistics (wait time, how many cycles the idle thread got, 
+        how much cpu time was consumed.)
+  draft score:  (#of context switches + number of ticks to execute the script) times
+     cpu time required.
+
+There are the Thread_Queue manipulating functions from geekos/list.h 
+   called-in by geekos/kthread.h.
+
+No mind-reading schedulers.  Use only history to predict future cpu/io burst behavior.
+
+May widen the interface to report thread about to go to sleep on I/O.
+* END scheduler simulation assignment
